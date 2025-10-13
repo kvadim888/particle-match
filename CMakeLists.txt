@@ -16,7 +16,8 @@ endif()
 
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-FIND_PACKAGE( Boost 1.40 COMPONENTS system program_options filesystem thread REQUIRED )
+#find_package( Boost 1.40 COMPONENTS system program_options filesystem thread REQUIRED )
+find_package(Boost 1.40 REQUIRED CONFIG COMPONENTS system program_options filesystem thread)
 find_package( OpenCV REQUIRED )
 
 # Look for the library and headers manually
