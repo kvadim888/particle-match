@@ -9,6 +9,8 @@
 #include "core/ParticleFilterConfig.hpp"
 #include "core/ParticleFilterCore.hpp"
 #include "io/PreviewRenderer.hpp"
+#include "models/MotionModelSvo.hpp"
+#include "models/ScaleModel.hpp"
 
 class WorkspaceRuntime {
 public:
@@ -38,13 +40,7 @@ public:
 
     const Particles &getParticles() const;
 
-    cv::Point getMovementFromSvo2(const MetadataEntry &metadata);
-
 private:
-    void updateScale(float hfov, float altitude, uint32_t imageWidth);
-
-    cv::Point getMovementFromSvo(const MetadataEntry &metadata);
-
     bool affineMatching = false;
     ParticleFilterCore core;
     PreviewRenderer renderer;
@@ -57,4 +53,6 @@ private:
     cv::Mat bestView;
     float currentScale = 0.0f;
     std::shared_ptr<GeographicLib::LocalCartesian> svoCoordinates;
+    MotionModelSvo motionModel;
+    ScaleModel scaleModel;
 };

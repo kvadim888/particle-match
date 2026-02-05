@@ -1,12 +1,6 @@
 #include "WorkspaceRuntime.hpp"
 
-#include <cmath>
 #include <iostream>
-
-#include <Eigen/Eigen>
-#include <opencv2/core/eigen.hpp>
-
-#include <src/Utilities.hpp>
 
 void WorkspaceRuntime::initialize(const MetadataEntry &metadata, const ParticleFilterConfig &config) {
     std::cout << "Initializing...";
@@ -22,14 +16,28 @@ void WorkspaceRuntime::initialize(const MetadataEntry &metadata, const ParticleF
     core.setDirection(direction);
     map = metadata.map;
     cv::Mat templ = metadata.getImageColored();
-    updateScale(1.0f, static_cast<float>(metadata.altitude), templ.cols);
+    currentScale = scaleModel.updateScale(
+            1.0f,
+            static_cast<float>(metadata.altitude),
+            templ.cols,
+            [this](float minScale, float maxScale) {
+                core.setScale(minScale, maxScale);
+            }
+    );
     startLocation = core.getFilter()->getPredictedLocation();
     std::cout << " done!" << std::endl;
 }
 
 void WorkspaceRuntime::update(const MetadataEntry &metadata) {
-    cv::Point movement = getMovementFromSvo(metadata);
-    updateScale(1.0f, static_cast<float>(metadata.altitude), 640);
+    cv::Point movement = motionModel.getMovementFromSvo(metadata, svoCoordinates, direction, svoCurPosition);
+    currentScale = scaleModel.updateScale(
+            1.0f,
+            static_cast<float>(metadata.altitude),
+            640,
+            [this](float minScale, float maxScale) {
+                core.setScale(minScale, maxScale);
+            }
+    );
     direction = metadata.imuOrientation.toRPY().getZ();
     core.setDirection(direction);
     cv::Mat templ = metadata.getImageColored();
@@ -100,75 +108,4 @@ void WorkspaceRuntime::describe() const {
 
 const Particles &WorkspaceRuntime::getParticles() const {
     return core.getParticles();
-}
-
-void WorkspaceRuntime::updateScale(float hfov, float altitude, uint32_t imageWidth) {
-    currentScale = (tan(hfov / 2.0f) * altitude) / (static_cast<float>(imageWidth) / 2.0f);
-    core.setScale(currentScale * .9f, currentScale * 1.1f);
-}
-
-cv::Point WorkspaceRuntime::getMovementFromSvo(const MetadataEntry &metadata) {
-    double lat, lon, h;
-    svoCoordinates->Reverse(
-            metadata.svoPose.getX(),
-            metadata.svoPose.getY(),
-            metadata.svoPose.getZ(),
-            lat,
-            lon,
-            h
-    );
-    cv::Point curLoc = metadata.mapper->toPixels(lat, lon);
-    cv::Point movement = curLoc - svoCurPosition;
-
-    float distance = static_cast<float>(std::sqrt(std::pow(movement.x, 2.f) + std::pow(movement.y, 2.f)));
-    movement = cv::Point2f(
-            static_cast<float>(std::sin(direction) * distance),
-            static_cast<float>(-std::cos(direction) * distance)
-    );
-
-    svoCurPosition = curLoc;
-    return movement;
-}
-
-cv::Point WorkspaceRuntime::getMovementFromSvo2(const MetadataEntry &metadata) {
-    double lat, lon, h;
-    svoCoordinates->Reverse(
-            metadata.svoPose.getX(),
-            metadata.svoPose.getY(),
-            metadata.svoPose.getZ(),
-            lat,
-            lon,
-            h
-    );
-    cv::Point curLoc = metadata.mapper->toPixels(lat, lon);
-    cv::Mat cameraRot = Utilities::eulerAnglesToRotationMatrix(cv::Point3d(-M_PI_2, 0, 0));
-    cv::Mat zeroLookVector = (cv::Mat_<double>(3, 1) << 0.0, 1.0, 0.0);
-    Eigen::Quaterniond q(
-            metadata.imuOrientation.getW(),
-            metadata.imuOrientation.getX(),
-            metadata.imuOrientation.getY(),
-            metadata.imuOrientation.getZ()
-            );
-    q.normalize();
-    cv::Mat quatTransform(3, 3, CV_64FC1);
-    cv::eigen2cv(q.toRotationMatrix(), quatTransform);
-    cv::Mat cameraLookVec = (quatTransform * cameraRot) * zeroLookVector;
-    cv::Point3d planePos = cv::Point3d(curLoc.x, curLoc.y, metadata.altitude);
-    cv::Point3d lookVector = cv::Point3d(
-            planePos.x + cameraLookVec.at<double>(0, 0),
-            planePos.y + cameraLookVec.at<double>(1, 0),
-            planePos.z + cameraLookVec.at<double>(2, 0)
-    );
-    cv::Point3d isection = Utilities::intersectPlaneV3(planePos, lookVector, cv::Point3d(0, 0, 0), cv::Point3d(0, 0, 1));
-    curLoc = cv::Point(static_cast<int>(isection.x), static_cast<int>(isection.y));
-    cv::Point movement = curLoc - svoCurPosition;
-
-    float distance = static_cast<float>(std::sqrt(std::pow(movement.x, 2.f) + std::pow(movement.y, 2.f)));
-    movement = cv::Point2f(
-            static_cast<float>(std::sin(direction) * distance),
-            static_cast<float>(-std::cos(direction) * distance)
-    );
-
-    svoCurPosition = curLoc;
-    return movement;
 }

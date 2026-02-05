@@ -84,6 +84,8 @@ target_link_libraries(fastmatch ${OpenCV_LIBS} ${Boost_LIBRARIES} tbb)
 
 add_executable(dataset-match
         localization/core/ParticleFilterCore.cpp
+        localization/models/MotionModelSvo.cpp
+        localization/models/ScaleModel.cpp
         localization/io/PreviewRenderer.cpp
         localization/runtime/WorkspaceRuntime.cpp
         localization/exec/dataset-test.cpp)

@@ -10,6 +10,8 @@
 #include <GeographicLib/LocalCartesian.hpp>
 
 #include "core/ParticleFilterConfig.hpp"
+#include "models/MotionModelSvo.hpp"
+#include "models/ScaleModel.hpp"
 
 class ParticleFilterWorkspace {
 protected:
@@ -26,13 +28,11 @@ protected:
     bool writeImageToDisk = false;
     bool displayImage = true;
     std::shared_ptr<GeographicLib::LocalCartesian> svoCoordinates;
+    MotionModelSvo motionModel;
+    ScaleModel scaleModel;
 
     static void visualizeGT(const cv::Point &loc, double yaw, cv::Mat &image, int radius, int thickness,
                             const cv::Scalar &color = CV_RGB(255, 255, 0));
-
-    void updateScale(float hfov, float altitude, uint32_t imageWidth);
-
-    cv::Point getMovementFromSvo(const MetadataEntry &metadata);
 
 public:
     bool isDisplayImage() const;
@@ -63,6 +63,4 @@ public:
 
     const Particles &getParticles() const;
 
-    Point getMovementFromSvo2(const MetadataEntry &metadata);
 };
-
