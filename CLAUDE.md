@@ -231,6 +231,15 @@ git submodule update --init --recursive
 - Optional GPU support via OpenCV CUDA for feature matching
 - KLD sampling adapts particle count based on distribution complexity
 
+## Detailed Documentation
+
+The `docs/` directory contains per-class documentation with fields, methods, algorithms, and usage patterns:
+
+- [docs/README.md](docs/README.md) - Navigation index for all documentation
+- [docs/Architecture.md](docs/Architecture.md) - System architecture, data flow diagrams, component interactions
+- [docs/Glossary.md](docs/Glossary.md) - Glossary of domain-specific terms (KLD, HPRELU, UTM, etc.)
+- Per-class documentation for all 15+ classes in the codebase
+
 ## Troubleshooting
 
 ### Missing GeographicLib
