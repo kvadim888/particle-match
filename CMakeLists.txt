@@ -82,7 +82,11 @@ target_link_libraries(fastmatch ${OpenCV_LIBS} ${Boost_LIBRARIES} tbb)
 #target_link_libraries(map-masker datasetreader ${CURL_LIBRARIES}
 #        ${OpenCV_LIBS} ${Boost_LIBRARIES} ${GeographicLib_LIBRARY} ${GDAL_LIBRARY})
 
-add_executable(dataset-match localization/exec/ParticleFilterWorkspace.cpp localization/exec/dataset-test.cpp)
+add_executable(dataset-match
+        localization/core/ParticleFilterCore.cpp
+        localization/io/PreviewRenderer.cpp
+        localization/runtime/WorkspaceRuntime.cpp
+        localization/exec/dataset-test.cpp)
 target_link_libraries(dataset-match fastmatch ${Boost_LIBRARIES} datasetreader)
 
 add_executable(image-sampler localization/exec/test-image-sampling.cpp localization/src/ImageSample.cpp)
@@ -98,4 +102,3 @@ SET(fastmatch_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/localization")
 CONFIGURE_FILE( ${CMAKE_CURRENT_SOURCE_DIR}/fastmatchConfig.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/fastmatchConfig.cmake @ONLY IMMEDIATE )
 export( PACKAGE fastmatch )
-
