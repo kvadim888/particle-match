@@ -8,7 +8,7 @@
 void Particles::init(cv::Point2i startLocation, const cv::Size mapSize,  double radius, int particleCount, bool use_gaussian) {
     double r, a;
     int size = 0;
-    Particle::setMapDimensions(mapSize);
+    particleConfig->setMapDimensions(mapSize);
     while (size < particleCount) {
         if(use_gaussian) {
             a = ((Utilities::gausian_noise(1.0f) - 0.5) * 2) * 2 * M_PI;
@@ -26,7 +26,7 @@ void Particles::init(cv::Point2i startLocation, const cv::Size mapSize,  double 
         // Skip duplicate particles
         if(!isLocationOccupied(x, y)) {
             addParticle(x, y);
-            back().setProbability(.5f);
+            data_.back().setProbability(.5f);
             size++;
         }
     }
@@ -34,17 +34,17 @@ void Particles::init(cv::Point2i startLocation, const cv::Size mapSize,  double 
 }
 
 void Particles::addParticle(int x, int y) {
-    emplace_back(x, y);
+    data_.emplace_back(x, y, particleConfig);
 }
 
 void Particles::addParticle(Particle p) {
-    emplace_back(p);
+    data_.emplace_back(std::move(p));
 }
 
 std::vector<fast_match::MatchConfig> Particles::getConfigs() {
     std::vector<fast_match::MatchConfig> configs;
     int i = 0;
-    for (auto &it : *this) {
+    for (auto &it : data_) {
         auto& curConfigs = it.getConfigs(i++);
         configs.insert(configs.end(), curConfigs.begin(), curConfigs.end());
     }
@@ -52,8 +52,8 @@ std::vector<fast_match::MatchConfig> Particles::getConfigs() {
 }
 
 bool Particles::isLocationOccupied(int x, int y) {
-    for (const_iterator it = begin() ; it != end(); ++it) {
-        if((*it).x == x && (*it).y == y) {
+    for (const auto& it : data_) {
+        if(it.x == x && it.y == y) {
             return true;
         }
     }
@@ -61,18 +61,19 @@ bool Particles::isLocationOccupied(int x, int y) {
 }
 
 void Particles::propagate(const cv::Point2f &movement, float alpha) {
-    for (auto &it : *this) {
+    std::uniform_real_distribution<float> dist(-1.f, 1.f);
+    for (auto &it : data_) {
         it.propagate(cv::Point2f(
-                movement.x * alpha * rng.uniform(-1.f, 1.f),
-                movement.y * alpha * rng.uniform(-1.f, 1.f)
+                movement.x * alpha * dist(rng_),
+                movement.y * alpha * dist(rng_)
         ));
     }
 }
 
 void Particles::printProbabilities() {
     int i = 1;
-    for (const_iterator it = begin(); it != end(); ++it) {
-        std::cout << "Particle no " << i++ << " probability is: " << (*it).getProbability() << "\n";
+    for (const auto& it : data_) {
+        std::cout << "Particle no " << i++ << " probability is: " << it.getProbability() << "\n";
     }
 }
 
@@ -80,12 +81,16 @@ std::vector<cv::Point> Particles::evaluate(cv::Mat image, cv::Mat templ, int no_
     /* Randomly sample points */
     cv::Mat xs(1, no_of_points, CV_32SC1),
             ys(1, no_of_points, CV_32SC1);
-    rng.fill(xs, cv::RNG::UNIFORM, 1, templ.cols);
-    rng.fill(ys, cv::RNG::UNIFORM, 1, templ.rows);
+    std::uniform_int_distribution<int> xDist(1, templ.cols - 1);
+    std::uniform_int_distribution<int> yDist(1, templ.rows - 1);
+    for (int i = 0; i < no_of_points; i++) {
+        xs.at<int>(0, i) = xDist(rng_);
+        ys.at<int>(0, i) = yDist(rng_);
+    }
 
     double lowestDistance = +INFINITY;
     cv::Mat bestTrasform;
-    for (auto &it : *this) {
+    for (auto &it : data_) {
         double distance = it.evaluate(image, templ, xs, ys);
         if(distance < lowestDistance) {
             lowestDistance = distance;
@@ -98,34 +103,34 @@ std::vector<cv::Point> Particles::evaluate(cv::Mat image, cv::Mat templ, int no_
 Particle Particles::sample() {
     double sampleThreshold = Utilities::uniform_dist();
     if(sampleThreshold < .5f) {
-        for (const auto &it : *this) {
+        for (const auto &it : data_) {
             if (it.getSamplingFactor() > sampleThreshold) {
                 return Particle(it);
             }
         }
     } else {
-        for (auto i = rbegin(); i != rend(); ++i ) {
+        for (auto i = data_.rbegin(); i != data_.rend(); ++i ) {
             if (i->getSamplingFactor() < sampleThreshold) {
                 return Particle(*i);
             }
         }
     }
     // Fallback: return last particle if no threshold matched
-    return Particle(back());
+    return Particle(data_.back());
 }
 
 void Particles::sortAscending() {
-    std::sort(begin(), end(), std::greater<>());
+    std::sort(data_.begin(), data_.end(), std::greater<>());
 }
 
 
 void Particles::normalize() {
     float normalizationFactor = 0.f,
             total = 0.f;
-    for (const auto &it : *this) {
+    for (const auto &it : data_) {
         normalizationFactor += it.getProbability();
     }
-    for (auto &it : *this) {
+    for (auto &it : data_) {
         float weight = it.getProbability() / normalizationFactor;
         it.setWeight(weight);
         total += weight;
@@ -135,7 +140,7 @@ void Particles::normalize() {
 
 cv::Point2i Particles::getWeightedSum() const {
     double s_x = .0, s_y = .0;
-    for(const auto& it : *this) {
+    for(const auto& it : data_) {
         s_x += it.x * it.getWeight();
         s_y += it.y * it.getWeight();
     }
@@ -148,11 +153,7 @@ void Particles::setScale(float min, float max, uint32_t steps) {
     for(uint32_t i = 0; i < steps; i++) {
         s_initial->push_back(min + (i * delta));
     }
-    for(auto& p : *this) {
+    for(auto& p : data_) {
         p.setS_initial(s_initial);
     }
 }
-
-
-
-

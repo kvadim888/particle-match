@@ -60,7 +60,6 @@ int main(int argc, const char *argv[]) {
     std::vector<double> initParams = readCsvParams(templatesDir + "/templ_00000.txt");
     cv::Point2i loc((int) initParams[0], (int) initParams[1]);
     cv::Point2d odoLoc(initParams[0], initParams[1]);
-    Particle::setDirection(initParams[2]);
     ParticleFastMatch fast_match(
             loc,    // startLocation
             image.size(), // mapSize
@@ -70,10 +69,9 @@ int main(int argc, const char *argv[]) {
             .99, // quantile_
             .5, // kld_error_
             10, // bin_size_
-            true, // use_gaussian
-            .9, // _min_scale
-            1.1 // _max_scale
+            true // use_gaussian
     );
+    fast_match.setDirection(initParams[2]);
     fast_match.setImage(image.clone());
     /*cv::namedWindow("template");
     cv::namedWindow("best_view");*/
@@ -90,7 +88,7 @@ int main(int argc, const char *argv[]) {
         cv::Point2d movement(-params[3], -params[4]);
         cv::Point2i curloc((int) params[0], (int) params[1]);
         odoLoc += movement;
-        Particle::setDirection(params[2]);
+        fast_match.setDirection(params[2]);
         Mat map = image.clone();
         fast_match.setTemplate(templ);
         cv::Mat bestView;

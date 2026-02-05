@@ -2,11 +2,22 @@
 // Created by rokas on 2020-02-29.
 //
 
+#include <algorithm>
 #include "ImageSample.hpp"
+
+namespace {
+    inline cv::Point clampToImage(const cv::Point& pt, const cv::Mat& image) {
+        return cv::Point(
+            std::clamp(pt.x, 0, image.cols - 1),
+            std::clamp(pt.y, 0, image.rows - 1)
+        );
+    }
+}
 
 ImageSample::ImageSample(const cv::Mat& image, const std::vector<cv::Point>& samplePoints, float average) {
     for (const auto& p : samplePoints) {
-        double val = static_cast<float>(image.at<uint8_t>(p)) - average;
+        auto cp = clampToImage(p, image);
+        double val = static_cast<float>(image.at<uint8_t>(cp)) - average;
         squared_sum += val * val;
         sample.push_back(val);
     }
@@ -32,10 +43,10 @@ ImageSample::ImageSample(
         cv::Point p = (ps + offset) - centerOffset;
 
         // Transform points
-        cv::Point pTran(
+        cv::Point pTran = clampToImage(cv::Point(
                 m11 * p.x + m12 * p.y + m13,
                 m21 * p.x + m22 * p.y + m23
-        );
+        ), image);
         double val = static_cast<float>(image.at<uint8_t>(pTran)) - average;
         squared_sum += val * val;
         sample.push_back(val);
@@ -59,7 +70,8 @@ double ImageSample::calcSimilarity(const ImageSample& other) const {
 ImageSample::ImageSample(const cv::Mat &image, const std::vector<cv::Point> &samplePoints) {
     double sum_ = 0.0;
     for (const auto& p : samplePoints) {
-        float val = static_cast<float>(image.at<uint8_t>(p));
+        auto cp = clampToImage(p, image);
+        float val = static_cast<float>(image.at<uint8_t>(cp));
         sum_ += val;
         sample.push_back(val);
     }
@@ -86,10 +98,10 @@ ImageSample::ImageSample(const cv::Mat &image, const std::vector<cv::Point> &sam
         cv::Point p = (ps + offset) - centerOffset;
 
         // Transform points
-        cv::Point pTran(
+        cv::Point pTran = clampToImage(cv::Point(
                 m11 * p.x + m12 * p.y + m13,
                 m21 * p.x + m22 * p.y + m23
-        );
+        ), image);
         double val = static_cast<float>(image.at<uint8_t>(pTran));
         sum_ += val;
         sample.push_back(val);

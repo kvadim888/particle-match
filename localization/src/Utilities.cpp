@@ -242,8 +242,8 @@ std::vector<cv::Mat> Utilities::configsToAffine(
     /* These are for the calculations of affine transformed corners */
     int r1x = static_cast<int>(0.5 * (templSize.width - 1)),
             r1y = static_cast<int>(0.5 * (templSize.height - 1)),
-            r2x = static_cast<int>(0.5 * (templSize.width - 1)),
-            r2y = static_cast<int>(0.5 * (templSize.height - 1));
+            r2x = static_cast<int>(0.5 * (imageSize.width - 1)),
+            r2y = static_cast<int>(0.5 * (imageSize.height - 1));
 
     Mat corners = (Mat_<float>(3, 4) << 1 - (r1x + 1), templSize.width - (r1x + 1), templSize.width - (r1x + 1), 1 - (r1x + 1),
             1 - (r1y + 1), 1 - (r1y + 1), templSize.height - (r1y + 1), templSize.height - (r1y + 1),

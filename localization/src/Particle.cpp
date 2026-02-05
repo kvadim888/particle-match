@@ -14,29 +14,6 @@ static constexpr int kDefaultHalfHeight = 240;
 // Direction calibration offset in degrees
 static constexpr float kDirectionOffsetDeg = 75.0f;
 
-float Particle::r_step = 0.05f;
-
-double Particle::direction = .0;
-
-// -5deg ~ + 5deg
-std::vector<float> Particle::r_initial = {
-        -(3 * Particle::r_step),
-        -(2.5f * Particle::r_step),
-        -(2 * Particle::r_step),
-        -(1.5f * Particle::r_step),
-        -(Particle::r_step),
-        -(0.5f * Particle::r_step),
-        0.f,
-        0.5f * Particle::r_step,
-        Particle::r_step,
-        1.5f * Particle::r_step,
-        2 * Particle::r_step,
-        2.5f * Particle::r_step,
-        3 * Particle::r_step
-};
-
-cv::Point2i Particle::mapCenter;
-
 float Particle::getProbability() const {
     return probability;
 }
@@ -53,13 +30,14 @@ void Particle::setProbability(float probability) {
     Particle::probability = accumulatedProbability / iteration;
 }
 
-Particle::Particle(int x, int y) : x(x), y(y), probability(1.0) {
+Particle::Particle(int x, int y, const std::shared_ptr<ParticleConfig>& config)
+    : config(config), x(x), y(y), probability(1.0) {
     updateConfigs();
 }
 
 const std::vector<fast_match::MatchConfig> &Particle::getConfigs(int id) {
-    for (auto &config : configs) {
-        config.setId(id);
+    for (auto &cfg : configs) {
+        cfg.setId(id);
     }
     return configs;
 }
@@ -92,30 +70,21 @@ void Particle::propagate(const cv::Point2f &movement) {
     updateConfigs();
 }
 
-void Particle::setMapDimensions(const cv::Size &dims) {
-    mapCenter.y = dims.height / 2;
-    mapCenter.x = dims.width / 2;
-}
-
-void Particle::setDirection(double direction) {
-    Particle::direction = direction;
-}
-
 void Particle::updateConfigs() {
     configs.clear();
     auto scale_steps = static_cast<int>(s_initial->size());
-    auto rotation_steps = static_cast<int>(r_initial.size());
+    auto rotation_steps = static_cast<int>(config->r_initial.size());
 
-    static std::vector<float> r2_rotations = {
-            -(3 * Particle::r_step),
+    std::vector<float> r2_rotations = {
+            -(3 * config->r_step),
             0,
-            3 * Particle::r_step,
+            3 * config->r_step,
     };
     auto nr2_steps = r2_rotations.size();
 
-    auto rotations = r_initial;
+    auto rotations = config->r_initial;
     for (float &rotation : rotations) {
-        rotation += Particle::direction;
+        rotation += config->direction;
     }
 
     for (size_t sx = 0; sx < static_cast<size_t>(scale_steps); sx++) {
@@ -123,8 +92,8 @@ void Particle::updateConfigs() {
             for (int r1 = 0; r1 < rotation_steps; r1++) {
                 for (size_t r2 = 0; r2 < nr2_steps; r2++) {
                     configs.emplace_back(
-                            x - mapCenter.x,
-                            y - mapCenter.y,
+                            x - config->mapCenter.x,
+                            y - config->mapCenter.y,
                             r2_rotations[r2],
                             s_initial->at(sx),
                             s_initial->at(sy),
@@ -212,15 +181,15 @@ void Particle::setS_initial(const std::shared_ptr<std::vector<float>> &s_initial
 }
 
 cv::Point2i Particle::getLocationInMapCoords() const {
-    return {x - mapCenter.x, y - mapCenter.y};
+    return {x - config->mapCenter.x, y - config->mapCenter.y};
 }
 
-double Particle::getDirection() {
-    return direction;
+double Particle::getDirection() const {
+    return config->direction;
 }
 
 double Particle::getDirectionDegrees() const {
-    return direction * geometry::kRadToDeg;
+    return config->direction * geometry::kRadToDeg;
 }
 
 cv::Point2i Particle::toPoint() const {
@@ -270,7 +239,9 @@ cv::Mat Particle::getMapImage(const cv::Mat &map, const cv::Size &imsize) const 
                     m11 * p.x + m12 * p.y + m13,
                     m21 * p.x + m22 * p.y + m23
             );
-            preview.at<uint8_t>(cv::Point2i(cx, cy)) = map.at<uint8_t>(pTran);
+            if (pTran.x >= 0 && pTran.x < map.cols && pTran.y >= 0 && pTran.y < map.rows) {
+                preview.at<uint8_t>(cv::Point2i(cx, cy)) = map.at<uint8_t>(pTran);
+            }
         }
     }
     return preview;
@@ -305,3 +276,7 @@ std::vector<cv::Point> Particle::getCorners() const {
 }
 
 Particle::Particle(const Particle &a) = default;
+
+void Particle::setConfig(const std::shared_ptr<ParticleConfig>& cfg) {
+    config = cfg;
+}

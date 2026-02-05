@@ -33,6 +33,10 @@ public:
     );
 
     ImageSample() = default;
+    ImageSample(const ImageSample&) = default;
+    ImageSample(ImageSample&&) noexcept = default;
+    ImageSample& operator=(const ImageSample&) = default;
+    ImageSample& operator=(ImageSample&&) noexcept = default;
 
     double calcSimilarity(const ImageSample& other) const;
 };

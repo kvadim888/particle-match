@@ -14,7 +14,6 @@ void ParticleFilterWorkspace::initialize(const MetadataEntry &metadata) {
     std::cout << "Initializing...";
     std::cout.flush();
     direction = metadata.imuOrientation.toRPY().getZ();
-    Particle::setDirection(direction);
     svoCurPosition = metadata.mapLocation;
     svoCoordinates = std::make_shared<GeographicLib::LocalCartesian>(
             metadata.latitude,
@@ -32,6 +31,7 @@ void ParticleFilterWorkspace::initialize(const MetadataEntry &metadata) {
             5, // bin_size_
             true // use_gaussian
     );
+    pfm->setDirection(direction);
     cv::Mat templ = metadata.getImageColored();
     pfm->setTemplate(templ);
     pfm->setImage(metadata.map);
@@ -49,7 +49,7 @@ void ParticleFilterWorkspace::update(const MetadataEntry &metadata) {
     cv::Point movement = getMovementFromSvo(metadata);
     updateScale(1.0, static_cast<float>(metadata.altitude), 640);
     direction = metadata.imuOrientation.toRPY().getZ();
-    Particle::setDirection(direction);
+    pfm->setDirection(direction);
     cv::Mat templ = metadata.getImageColored();
     pfm->setTemplate(templ);
     if(!affineMatching) {

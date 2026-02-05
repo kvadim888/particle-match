@@ -130,7 +130,7 @@ void ParticleFastMatch::propagateParticles(const cv::Point2f& movement) {
 }
 
 void ParticleFastMatch::setDirection(const double &_d) {
-    Particle::setDirection(_d);
+    particles.getConfig()->direction = _d;
 }
 
 vector<double>
