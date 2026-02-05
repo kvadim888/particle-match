@@ -90,7 +90,7 @@ graph TD
         Bin --> |"новий бін?"| Count[Оновлення samplingCount]
         Count --> |"ще потрібно?"| Sample
 
-        KLD --> Eval[Паралельна оцінка TBB]
+        KLD --> Eval[Паралельна оцінка через ParallelFor]
         Eval --> MapSample[ImageSample з карти]
         Eval --> TemplSample[ImageSample шаблону]
         MapSample --> Corr[Кореляція]
@@ -192,14 +192,18 @@ MetadataEntryReader
 
 ## Паралелізм
 
-Система використовує Intel TBB для паралельної обробки:
+Основні гарячі цикли паралеляться через адаптер `ParallelFor`, який може працювати в одному з бекендів:
 
-| Місце | Виклик TBB | Що паралелізується |
-|-------|------------|-------------------|
-| `ParticleFastMatch::filterParticles` | `tbb::parallel_for_each` | Оцінка кожної частинки (ImageSample + кореляція) |
-| `ParticleFastMatch::evaluateConfigs` | `tbb::parallel_for` | Обчислення відстані для кожної афінної конфігурації |
-| `ParticleFastMatch::configsToAffine` | `tbb::parallel_for` | Конвертація конфігурацій в матриці + перевірка меж |
-| `Utilities::configsToAffine` | `tbb::parallel_for` | Аналогічно |
+- **TBB** (`-DUSE_TBB=ON`, за замовчуванням)
+- **std::execution** (`-DUSE_STD_EXECUTION=ON`)
+- **послідовний режим** (обидві опції вимкнені)
+
+| Місце | Виклик адаптера | Що паралелізується |
+|-------|-----------------|-------------------|
+| `ParticleFastMatch::filterParticles` | `parallel::parallelForEach` | Оцінка кожної частинки (ImageSample + кореляція) |
+| `ParticleFastMatch::evaluateConfigs` | `parallel::parallelFor` | Обчислення відстані для кожної афінної конфігурації |
+| `ParticleFastMatch::configsToAffine` | `parallel::parallelFor` | Конвертація конфігурацій в матриці + перевірка меж |
+| `Utilities::configsToAffine` | `parallel::parallelFor` | Аналогічно |
 
 Потокобезпечність забезпечується тим, що кожен паралельний виклик працює з незалежними даними (різні частинки/конфігурації).
 

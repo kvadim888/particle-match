@@ -14,7 +14,7 @@ https://zenodo.org/record/1211730
 * Eigen3
 * libgdal
 * libcurl
-* tbb
+* tbb (optional, when building with `-DUSE_TBB=ON`)
 
 # Running the project
 
@@ -25,6 +25,10 @@ mkdir build
 cmake ..
 make
 ``` 
+Optional parallel backends:
+- `-DUSE_TBB=ON` (default, requires TBB)
+- `-DUSE_STD_EXECUTION=ON` (uses `std::execution`; mutually exclusive with TBB)
+- set both OFF for sequential mode
 3. Download sample dataset, run the download script from project root directory:
 ```
 bash download_data.sh

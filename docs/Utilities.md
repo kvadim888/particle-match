@@ -62,7 +62,7 @@ static cv::Point calculateLocationInMap(const cv::Size &image_size, const cv::Si
 static std::vector<cv::Mat> configsToAffine(std::vector<MatchConfig> &configs, std::vector<bool> &insiders,
                                              const cv::Size &imageSize, const cv::Size &templSize);
 ```
-Масова конвертація конфігурацій в афінні матриці з фільтрацією за межами. Паралелізується через TBB.
+Масова конвертація конфігурацій в афінні матриці з фільтрацією за межами. Паралелізується через `ParallelFor` (бекенд TBB або `std::execution`).
 
 #### extractWarpedMapPart
 ```cpp
