@@ -5,9 +5,8 @@
 
 #include <fastmatch-dataset/MetadataEntryReader.hpp>
 #include <opencv2/opencv.hpp>
-#include <src/ParticleFastMatch.hpp>
 #include <chrono>
-#include "ParticleFilterWorkspace.hpp"
+#include "runtime/WorkspaceRuntime.hpp"
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
@@ -48,11 +47,9 @@ int main(int ac, char *av[]) {
 
     bool displayPreview = vm.count("preview") > 0;
     bool pfInitialized = false;
-    std::shared_ptr<ParticleFastMatch> pfm;
-
     // Declare reader
     MetadataEntryReader reader;
-    ParticleFilterWorkspace pf;
+    WorkspaceRuntime pf;
     pf.setDisplayImage(displayPreview);
     std::string mapName;
     if(vm.count("map-image")) {
