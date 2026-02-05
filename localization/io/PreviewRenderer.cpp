@@ -1,12 +1,13 @@
 #include "PreviewRenderer.hpp"
 
 #include <cmath>
-#include <iomanip>
 #include <iostream>
 
 #include <boost/filesystem/path.hpp>
 
 #include <src/Utilities.hpp>
+
+#include "ResultWriter.hpp"
 
 namespace fs = boost::filesystem;
 
@@ -23,8 +24,6 @@ bool PreviewRenderer::render(const MetadataEntry &metadata,
                              const std::shared_ptr<ParticleFastMatch> &pfm) {
     cv::Point2i prediction = pfm->getPredictedLocation();
     cv::Point2i relativeLocation = prediction - startLocation;
-    stringOutput << pfm->particleCount() << ",";
-    stringOutput << relativeLocation.x << "," << relativeLocation.y << ",";
     cv::Point2i offset = cv::Point2i(
             -(prediction.x - 1000),
             -(prediction.y - 1000)
@@ -106,7 +105,13 @@ bool PreviewRenderer::render(const MetadataEntry &metadata,
     double distance = sqrt(pow(metadata.mapLocation.x - prediction.x, 2) + pow(metadata.mapLocation.y - prediction.y, 2));
     double svoDistance = sqrt(pow(metadata.mapLocation.x - svoCurPosition.x, 2) +
                                       pow(metadata.mapLocation.y - svoCurPosition.y, 2));
-    stringOutput << std::fixed << std::setprecision(2) << distance << "," << svoDistance;
+    ResultWriter::appendRow(
+            stringOutput,
+            pfm->particleCount(),
+            relativeLocation,
+            distance,
+            svoDistance
+    );
     cv::putText(mapDisplay, "Location error = " + std::to_string(distance) + " m",
                 cv::Point(10, textOffset), fontFace, fontScale, Scalar::all(255), thickness, 8);
     if(writeImageToDisk) {

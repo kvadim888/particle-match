@@ -8,6 +8,7 @@
 #include <chrono>
 #include "runtime/WorkspaceRuntime.hpp"
 #include "core/ParticleFilterConfig.hpp"
+#include "io/ResultWriter.hpp"
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
@@ -110,7 +111,9 @@ int main(int ac, char *av[]) {
             if(writeHistograms) {
                 hists.open((dir / "histograms.csv").string());
             }
-            output << "\"Iteration\",\"ImageName\",\"ParticleCount\",\"PosX\",\"PosY\",\"Distance\",\"SVODistance\"\n";
+            output << "\"Iteration\",\"ImageName\",";
+            ResultWriter::appendHeader(output);
+            output << "\n";
             // Parse line by line into the structure
             MetadataEntry entry;
             int iteration = 0;

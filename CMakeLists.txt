@@ -87,6 +87,7 @@ add_executable(dataset-match
         localization/models/MotionModelSvo.cpp
         localization/models/ScaleModel.cpp
         localization/io/PreviewRenderer.cpp
+        localization/io/ResultWriter.cpp
         localization/runtime/WorkspaceRuntime.cpp
         localization/exec/dataset-test.cpp)
 target_link_libraries(dataset-match fastmatch ${Boost_LIBRARIES} datasetreader)
