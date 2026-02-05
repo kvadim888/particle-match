@@ -10,6 +10,7 @@
 #include <GeographicLib/LocalCartesian.hpp>
 
 #include "core/ParticleFilterConfig.hpp"
+#include "io/PreviewRenderer.hpp"
 #include "models/MotionModelSvo.hpp"
 #include "models/ScaleModel.hpp"
 
@@ -22,17 +23,12 @@ protected:
     cv::Point startLocation;
     cv::Mat map;
     std::vector<cv::Point> corners;
-    std::string outputDirectory;
     cv::Mat bestTransform;
     float currentScale = 0.0;
-    bool writeImageToDisk = false;
-    bool displayImage = true;
     std::shared_ptr<GeographicLib::LocalCartesian> svoCoordinates;
     MotionModelSvo motionModel;
     ScaleModel scaleModel;
-
-    static void visualizeGT(const cv::Point &loc, double yaw, cv::Mat &image, int radius, int thickness,
-                            const cv::Scalar &color = CV_RGB(255, 255, 0));
+    PreviewRenderer renderer;
 
 public:
     bool isDisplayImage() const;
