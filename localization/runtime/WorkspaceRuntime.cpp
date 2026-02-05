@@ -8,7 +8,7 @@
 
 #include <src/Utilities.hpp>
 
-void WorkspaceRuntime::initialize(const MetadataEntry &metadata) {
+void WorkspaceRuntime::initialize(const MetadataEntry &metadata, const ParticleFilterConfig &config) {
     std::cout << "Initializing...";
     std::cout.flush();
     direction = metadata.imuOrientation.toRPY().getZ();
@@ -18,7 +18,7 @@ void WorkspaceRuntime::initialize(const MetadataEntry &metadata) {
             metadata.longitude,
             metadata.altitude
     );
-    core.initialize(metadata);
+    core.initialize(metadata, config);
     core.setDirection(direction);
     map = metadata.map;
     cv::Mat templ = metadata.getImageColored();

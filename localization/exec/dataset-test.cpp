@@ -7,6 +7,7 @@
 #include <opencv2/opencv.hpp>
 #include <chrono>
 #include "runtime/WorkspaceRuntime.hpp"
+#include "core/ParticleFilterConfig.hpp"
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
@@ -25,6 +26,13 @@ int main(int ac, char *av[]) {
             ("conversion-method,M", po::value<std::string>()->default_value("glf"), "Correlation to probability conversion "
                                                                                        "function: hprelu or glf")
             ("write-histograms,H", "Write correlation histograms to a separate CSV file")
+            ("particle-radius", po::value<double>()->default_value(500.0), "Particle filter radius")
+            ("epsilon", po::value<float>()->default_value(0.1f), "Particle filter epsilon")
+            ("particle-count", po::value<int>()->default_value(200), "Particle filter particle count")
+            ("quantile", po::value<float>()->default_value(0.99f), "Particle filter quantile")
+            ("kld-error", po::value<float>()->default_value(0.5f), "Particle filter KLD error")
+            ("bin-size", po::value<int>()->default_value(5), "Particle filter bin size")
+            ("use-gaussian", po::value<bool>()->default_value(true), "Use gaussian sampling")
             ("help,h", "produce help message");
 
     po::variables_map vm;
@@ -42,6 +50,15 @@ int main(int ac, char *av[]) {
         std::cout << desc << "\n";
         return 1;
     }
+
+    ParticleFilterConfig config;
+    config.radius = vm["particle-radius"].as<double>();
+    config.epsilon = vm["epsilon"].as<float>();
+    config.particleCount = vm["particle-count"].as<int>();
+    config.quantile = vm["quantile"].as<float>();
+    config.kld_error = vm["kld-error"].as<float>();
+    config.binSize = vm["bin-size"].as<int>();
+    config.use_gaussian = vm["use-gaussian"].as<bool>();
 
     std::stringstream output;
 
@@ -100,7 +117,7 @@ int main(int ac, char *av[]) {
             while (reader.readNextEntry(entry)) {
                 output << iteration++ << ",\"" << entry.imageFileName << "\",";
                 if(!pfInitialized) {
-                    pf.initialize(entry);
+                    pf.initialize(entry, config);
                     if(vm["conversion-method"].as<std::string>() == "glf") {
                         pf.setConversionMethod(ParticleFastMatch::GLF);
                     } else if (vm["conversion-method"].as<std::string>() == "softmax") {

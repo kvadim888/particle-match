@@ -2,17 +2,17 @@
 
 #include <iostream>
 
-void ParticleFilterCore::initialize(const MetadataEntry &metadata) {
+void ParticleFilterCore::initialize(const MetadataEntry &metadata, const ParticleFilterConfig &config) {
     pfm = std::make_shared<ParticleFastMatch>(
             metadata.mapLocation, // startLocation
             metadata.map.size(), // mapSize
-            500, // radius
-            .1f, // epsilon
-            200, // particleCount
-            .99, // quantile_
-            .5, // kld_error_
-            5, // bin_size_
-            true // use_gaussian
+            config.radius, // radius
+            config.epsilon, // epsilon
+            config.particleCount, // particleCount
+            config.quantile, // quantile_
+            config.kld_error, // kld_error_
+            config.binSize, // bin_size_
+            config.use_gaussian // use_gaussian
     );
     cv::Mat templ = metadata.getImageColored();
     pfm->setTemplate(templ);

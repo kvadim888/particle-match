@@ -6,9 +6,11 @@
 #include <fastmatch-dataset/MetadataEntry.hpp>
 #include <src/ParticleFastMatch.hpp>
 
+#include "ParticleFilterConfig.hpp"
+
 class ParticleFilterCore {
 public:
-    void initialize(const MetadataEntry &metadata);
+    void initialize(const MetadataEntry &metadata, const ParticleFilterConfig &config);
 
     void setDirection(double direction);
 

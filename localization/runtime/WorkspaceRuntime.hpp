@@ -6,12 +6,13 @@
 #include <GeographicLib/LocalCartesian.hpp>
 #include <fastmatch-dataset/MetadataEntry.hpp>
 
+#include "core/ParticleFilterConfig.hpp"
 #include "core/ParticleFilterCore.hpp"
 #include "io/PreviewRenderer.hpp"
 
 class WorkspaceRuntime {
 public:
-    void initialize(const MetadataEntry &metadata);
+    void initialize(const MetadataEntry &metadata, const ParticleFilterConfig &config);
 
     void update(const MetadataEntry &metadata);
 
