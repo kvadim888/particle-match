@@ -15,7 +15,6 @@ public:
     void init(cv::Point2i startLocation, const cv::Size mapSize, double radius, int particleCount, bool use_gaussian);
     std::vector<fast_match::MatchConfig> getConfigs();
     void propagate(const cv::Point2f& movement, float alpha = 2.f);
-    void assignProbabilities(const std::vector<fast_match::MatchConfig>& configs, const std::vector<double> probabilities);
 
 
     void addParticle(Particle p);

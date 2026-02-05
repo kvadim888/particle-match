@@ -59,8 +59,7 @@ void ParticleFilterWorkspace::update(const MetadataEntry &metadata) {
 #ifdef USE_CV_GPU
         corners = pfm->filterParticlesAffine(movement, bestTransform);
 #else
-        std::cerr << "Affine particle matching is available with GPU support only at this moment" << std::endl;
-        exit(1);
+        throw std::runtime_error("Affine particle matching is available with GPU support only");
 #endif
     }
 }
@@ -192,7 +191,7 @@ void ParticleFilterWorkspace::visualizeGT(const cv::Point &loc, double yaw, cv::
 }
 
 void ParticleFilterWorkspace::updateScale(float hfov, float altitude, uint32_t imageWidth) {
-    currentScale = (tan(hfov / 2.0f) * altitude) / ((float) imageWidth / 2.0f);
+    currentScale = (tan(hfov / 2.0f) * altitude) / (static_cast<float>(imageWidth) / 2.0f);
     pfm->setScale(currentScale * .9f, currentScale * 1.1f);
 }
 

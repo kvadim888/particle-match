@@ -13,10 +13,10 @@
 #include <random>
 #include <tbb/tbb.h>
 
+#include "GeometryUtils.hpp"
 
-#define WITHIN(val, top_left, bottom_right) (\
-            val.x > top_left.x && val.y > top_left.y && \
-            val.x < bottom_right.x && val.y < bottom_right.y )
+using namespace std;
+using namespace cv;
 
 namespace fast_match {
     FAsTMatch::FAsTMatch() {
@@ -29,8 +29,7 @@ namespace fast_match {
         this->photometricInvariance = photometric_invariance;
         this->minScale = min_scale;
         this->maxScale = max_scale;
-        GridConfigExpander* expander = new GridConfigExpander();
-        configExpander.reset(dynamic_cast<ConfigExpanderBase*>(expander));
+        configExpander = std::make_shared<GridConfigExpander>();
     }
 
     void FAsTMatch::apply(Mat &original_image, Mat &original_template, double &best_distance, float min_rotation,
@@ -40,10 +39,10 @@ namespace fast_match {
         templ = Utilities::preprocessImage(original_template);
         FAsTMatch::original_image = original_image;
 
-        int r1x = (int) (0.5 * (templ.cols - 1)),
-                r1y = (int) (0.5 * (templ.rows - 1)),
-                r2x = (int) (0.5 * (image.cols - 1)),
-                r2y = (int) (0.5 * (image.rows - 1));
+        int r1x = static_cast<int>(0.5 * (templ.cols - 1)),
+                r1y = static_cast<int>(0.5 * (templ.rows - 1)),
+                r2x = static_cast<int>(0.5 * (image.cols - 1)),
+                r2y = static_cast<int>(0.5 * (image.rows - 1));
 
         float min_trans_x = -(r2x - r1x * minScale),
                 max_trans_x = -min_trans_x,
@@ -60,7 +59,7 @@ namespace fast_match {
         GaussianBlur(templ, templ, Size(0, 0), 2.0, 2.0);
         GaussianBlur(image, image, Size(0, 0), 2.0, 2.0);
 
-        no_of_points = (int) round(10 / (epsilon * epsilon));
+        no_of_points = static_cast<int>(round(10 / (epsilon * epsilon)));
 
 
         level = 0;
@@ -77,11 +76,11 @@ namespace fast_match {
      **/
     vector<Mat> FAsTMatch::configsToAffine(vector<MatchConfig> &configs, vector<bool> &insiders) {
         int no_of_configs = static_cast<int>(configs.size());
-        vector<Mat> affines((unsigned long) no_of_configs);
+        vector<Mat> affines(static_cast<size_t>(no_of_configs));
 
         /* The boundary, between -10 to image size + 10 */
-        Point2d top_left(-10., -10.);
-        Point2d bottom_right(image.cols + 10, image.rows + 10);
+        Point2d top_left(-geometry::kBoundaryPadding, -geometry::kBoundaryPadding);
+        Point2d bottom_right(image.cols + geometry::kBoundaryPadding, image.rows + geometry::kBoundaryPadding);
 
 
         /* These are for the calculations of affine transformed corners */
@@ -99,7 +98,7 @@ namespace fast_match {
                 r2x + 1, r2y + 1,
                 r2x + 1, r2y + 1);
 
-        insiders.assign((unsigned long) no_of_configs, false);
+        insiders.assign(static_cast<size_t>(no_of_configs), false);
 
         /* Convert each configuration to corresponding affine transformation matrix */
         tbb::parallel_for(0, no_of_configs, 1, [&](int i) {
@@ -109,10 +108,10 @@ namespace fast_match {
             Mat affine_corners = (affine * corners).t();
             affine_corners = affine_corners + transl;
 
-            if (WITHIN(affine_corners.at<Point2f>(0, 0), top_left, bottom_right) &&
-                WITHIN(affine_corners.at<Point2f>(1, 0), top_left, bottom_right) &&
-                WITHIN(affine_corners.at<Point2f>(2, 0), top_left, bottom_right) &&
-                WITHIN(affine_corners.at<Point2f>(3, 0), top_left, bottom_right)) {
+            if (isWithinBounds(affine_corners.at<Point2f>(0, 0), top_left, bottom_right) &&
+                isWithinBounds(affine_corners.at<Point2f>(1, 0), top_left, bottom_right) &&
+                isWithinBounds(affine_corners.at<Point2f>(2, 0), top_left, bottom_right) &&
+                isWithinBounds(affine_corners.at<Point2f>(3, 0), top_left, bottom_right)) {
 
                 affines[i] = affine;
                 insiders[i] = true;
@@ -137,10 +136,10 @@ namespace fast_match {
     vector<double> FAsTMatch::evaluateConfigs(Mat &image, Mat &templ, vector<Mat> &affine_matrices,
                                               Mat &xs, Mat &ys, bool photometric_invariance) {
 
-        int r1x = (int) (0.5 * (templ.cols - 1)),
-                r1y = (int) (0.5 * (templ.rows - 1)),
-                r2x = (int) (0.5 * (image.cols - 1)),
-                r2y = (int) (0.5 * (image.rows - 1));
+        int r1x = static_cast<int>(0.5 * (templ.cols - 1)),
+                r1y = static_cast<int>(0.5 * (templ.rows - 1)),
+                r2x = static_cast<int>(0.5 * (image.cols - 1)),
+                r2y = static_cast<int>(0.5 * (image.rows - 1));
 
         int no_of_configs = static_cast<int>(affine_matrices.size());
         int no_of_points = xs.cols;
@@ -297,7 +296,6 @@ namespace fast_match {
 
 
         /* First create configurations based on our net */
-        //vector<MatchConfig> configs = createListOfConfigs(net, templ.size(), image.size());
         configs = configExpander->createListOfConfigs(templ.size(), image.size());
 
         int configs_count = static_cast<int>(configs.size());
@@ -308,8 +306,8 @@ namespace fast_match {
         /* Filter out configurations that fall outside of the boundaries */
         /* the internal logic of configsToAffine has more information */
         vector<MatchConfig> temp_configs;
-        for (int i = 0; i < insiders.size(); i++)
-            if (insiders[i] == true)
+        for (size_t i = 0; i < insiders.size(); i++)
+            if (insiders[i])
                 temp_configs.push_back(configs[i]);
         configs = temp_configs;
 
@@ -397,8 +395,8 @@ namespace fast_match {
         } else {
             FAsTMatch::image = Utilities::preprocessImage(image);
         }
-        imageAvg = cv::sum(FAsTMatch::image).val[0] / ((float) image.cols * (float) image.rows);
-        imageGrayAvg = cv::sum(FAsTMatch::imageGray).val[0] / ((float) image.cols * (float) image.rows);
+        imageAvg = static_cast<float>(cv::sum(FAsTMatch::image).val[0] / (image.cols * image.rows));
+        imageGrayAvg = static_cast<float>(cv::sum(FAsTMatch::imageGray).val[0] / (image.cols * image.rows));
         GaussianBlur( imageGray, imageGray, Size( 9, 9 ), 0, 0 );
 #ifdef USE_CV_GPU
         imageGrayGpu.upload(imageGray);
@@ -412,8 +410,8 @@ namespace fast_match {
         } else {
             FAsTMatch::templ = Utilities::preprocessImage(templ);
         }
-        templAvg = cv::sum(FAsTMatch::templ).val[0] / ((float) templ.cols * (float) templ.rows);
-        templGrayAvg = cv::sum(FAsTMatch::templGray).val[0] / ((float) templ.cols * (float) templ.cols);
+        templAvg = static_cast<float>(cv::sum(FAsTMatch::templ).val[0] / (templ.cols * templ.rows));
+        templGrayAvg = static_cast<float>(cv::sum(FAsTMatch::templGray).val[0] / (templ.cols * templ.cols));
         GaussianBlur( templGray, templGray, Size( 9, 9 ), 0, 0 );
 #ifdef USE_CV_GPU
         templGrayGpu.upload(templGray);

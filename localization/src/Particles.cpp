@@ -21,8 +21,8 @@ void Particles::init(cv::Point2i startLocation, const cv::Size mapSize,  double 
             double u = r1 + r2;
             r = u > radius ? (2 * radius) - u : u;
         }
-        auto x = (int) (startLocation.x + (r * cos(a)));
-        auto y = (int) (startLocation.y + (r * sin(a)));
+        auto x = static_cast<int>(startLocation.x + (r * cos(a)));
+        auto y = static_cast<int>(startLocation.y + (r * sin(a)));
         // Skip duplicate particles
         if(!isLocationOccupied(x, y)) {
             addParticle(x, y);
@@ -76,11 +76,6 @@ void Particles::printProbabilities() {
     }
 }
 
-void Particles::assignProbabilities(const std::vector<fast_match::MatchConfig> &configs,
-                                    const std::vector<double> probabilities) {
-
-}
-
 std::vector<cv::Point> Particles::evaluate(cv::Mat image, cv::Mat templ, int no_of_points) {
     /* Randomly sample points */
     cv::Mat xs(1, no_of_points, CV_32SC1),
@@ -115,6 +110,8 @@ Particle Particles::sample() {
             }
         }
     }
+    // Fallback: return last particle if no threshold matched
+    return Particle(back());
 }
 
 void Particles::sortAscending() {
@@ -142,11 +139,11 @@ cv::Point2i Particles::getWeightedSum() const {
         s_x += it.x * it.getWeight();
         s_y += it.y * it.getWeight();
     }
-    return cv::Point2i((int) s_x, (int) s_y);
+    return cv::Point2i(static_cast<int>(s_x), static_cast<int>(s_y));
 }
 
 void Particles::setScale(float min, float max, uint32_t steps) {
-    float delta = (std::abs(min - max)) / (float) (steps - 1);
+    float delta = (std::abs(min - max)) / static_cast<float>(steps - 1);
     s_initial = std::make_shared<std::vector<float>>();
     for(uint32_t i = 0; i < steps; i++) {
         s_initial->push_back(min + (i * delta));

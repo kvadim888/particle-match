@@ -10,18 +10,15 @@
 
 #include <chrono>
 #include <random>
+#include <cmath>
 
 #include <tbb/parallel_for.h>
 
-#define WITHIN(val, top_left, bottom_right) (\
-            val.x > top_left.x && val.y > top_left.y && \
-            val.x < bottom_right.x && val.y < bottom_right.y )
+#include "GeometryUtils.hpp"
 
 
 double zeroIfNan(double x) {
-    if (x * 0.0 == 0.0)
-        return x;
-    return 0;
+    return std::isnan(x) ? 0.0 : x;
 }
 
 
@@ -88,10 +85,10 @@ std::vector<cv::Point> Utilities::calcCorners(cv::Size image_size, cv::Size temp
     double c4y = a21 * (1 - (r1x + 1)) + a22 * (templ_h - (r1y + 1)) + (r2y + 1) + a23;
 
     return std::vector<cv::Point2i> {
-            Point((int) c1x, (int) c1y),
-            Point((int) c2x, (int) c2y),
-            Point((int) c3x, (int) c3y),
-            Point((int) c4x, (int) c4y)
+            Point(static_cast<int>(c1x), static_cast<int>(c1y)),
+            Point(static_cast<int>(c2x), static_cast<int>(c2y)),
+            Point(static_cast<int>(c3x), static_cast<int>(c3y)),
+            Point(static_cast<int>(c4x), static_cast<int>(c4y))
     };
 }
 
@@ -235,18 +232,18 @@ std::vector<cv::Mat> Utilities::configsToAffine(
         const cv::Size& imageSize, const cv::Size& templSize
 ) {
     auto no_of_configs = static_cast<int>(configs.size());
-    std::vector<cv::Mat> affines((unsigned long) no_of_configs);
+    std::vector<cv::Mat> affines(static_cast<size_t>(no_of_configs));
 
     /* The boundary, between -10 to image size + 10 */
-    Point2d top_left(-10., -10.);
-    Point2d bottom_right(imageSize.width + 10, imageSize.height + 10);
+    Point2d top_left(-geometry::kBoundaryPadding, -geometry::kBoundaryPadding);
+    Point2d bottom_right(imageSize.width + geometry::kBoundaryPadding, imageSize.height + geometry::kBoundaryPadding);
 
 
     /* These are for the calculations of affine transformed corners */
-    int r1x = (int) (0.5 * (templSize.width - 1)),
-            r1y = (int) (0.5 * (templSize.height - 1)),
-            r2x = (int) (0.5 * (templSize.width - 1)),
-            r2y = (int) (0.5 * (templSize.height - 1));
+    int r1x = static_cast<int>(0.5 * (templSize.width - 1)),
+            r1y = static_cast<int>(0.5 * (templSize.height - 1)),
+            r2x = static_cast<int>(0.5 * (templSize.width - 1)),
+            r2y = static_cast<int>(0.5 * (templSize.height - 1));
 
     Mat corners = (Mat_<float>(3, 4) << 1 - (r1x + 1), templSize.width - (r1x + 1), templSize.width - (r1x + 1), 1 - (r1x + 1),
             1 - (r1y + 1), 1 - (r1y + 1), templSize.height - (r1y + 1), templSize.height - (r1y + 1),
@@ -257,7 +254,7 @@ std::vector<cv::Mat> Utilities::configsToAffine(
             r2x + 1, r2y + 1,
             r2x + 1, r2y + 1);
 
-    insiders.assign((unsigned long) no_of_configs, false);
+    insiders.assign(static_cast<size_t>(no_of_configs), false);
 
     /* Convert each configuration to corresponding affine transformation matrix */
     tbb::parallel_for(0, no_of_configs, 1, [&](int i) {
@@ -267,10 +264,10 @@ std::vector<cv::Mat> Utilities::configsToAffine(
         Mat affine_corners = (affine * corners).t();
         affine_corners = affine_corners + transl;
 
-        if (WITHIN(affine_corners.at<Point2f>(0, 0), top_left, bottom_right) &&
-            WITHIN(affine_corners.at<Point2f>(1, 0), top_left, bottom_right) &&
-            WITHIN(affine_corners.at<Point2f>(2, 0), top_left, bottom_right) &&
-            WITHIN(affine_corners.at<Point2f>(3, 0), top_left, bottom_right)) {
+        if (isWithinBounds(affine_corners.at<Point2f>(0, 0), top_left, bottom_right) &&
+            isWithinBounds(affine_corners.at<Point2f>(1, 0), top_left, bottom_right) &&
+            isWithinBounds(affine_corners.at<Point2f>(2, 0), top_left, bottom_right) &&
+            isWithinBounds(affine_corners.at<Point2f>(3, 0), top_left, bottom_right)) {
 
             affines[i] = affine;
             insiders[i] = true;
@@ -307,8 +304,8 @@ cv::Point Utilities::calculateLocationInMap(
             a23 = affine.at<float>(1, 2);
 
     return cv::Point(
-            (int) (a11 * ((templPoint.x + 1)- (r1x + 1)) + a12 * ((templPoint.y + 1) - (r1y + 1)) + (r2x + 1) + a13),
-            (int) (a21 * ((templPoint.x + 1) - (r1x + 1)) + a22 * ((templPoint.y + 1) - (r1y + 1)) + (r2y + 1) + a23)
+            static_cast<int>(a11 * ((templPoint.x + 1)- (r1x + 1)) + a12 * ((templPoint.y + 1) - (r1y + 1)) + (r2x + 1) + a13),
+            static_cast<int>(a21 * ((templPoint.x + 1) - (r1x + 1)) + a22 * ((templPoint.y + 1) - (r1y + 1)) + (r2y + 1) + a23)
     );
 }
 
@@ -316,8 +313,8 @@ cv::Mat Utilities::extractMapPart(const cv::Mat &map,
                                   const cv::Size &size, const cv::Point &position, double angle, float scale) {
     // Calculate how much data to crop out
     cv::Mat image;
-    float imangle = std::atan(((float) size.width) / ((float) size.height));
-    int roiReserver = (int) std::ceil(size.width / std::sin(imangle));
+    float imangle = std::atan(static_cast<float>(size.width) / static_cast<float>(size.height));
+    int roiReserver = static_cast<int>(std::ceil(size.width / std::sin(imangle)));
     int centerLoc = roiReserver / 2;
     // Cut part of map
     cv::Mat region = map(cv::Rect(position.x - centerLoc, position.y - centerLoc, roiReserver, roiReserver));
@@ -326,7 +323,7 @@ cv::Mat Utilities::extractMapPart(const cv::Mat &map,
     // Actual rotation
     cv::Mat view(region.size(), region.type());
     cv::Mat rot_mat = cv::getRotationMatrix2D(cv::Point(centerLoc, centerLoc), angle, scale);
-    cv::warpAffine(region, view, rot_mat, cv::Size(roiReserver, roiReserver));// cv::Size(roiReserver, roiReserver));
+    cv::warpAffine(region, view, rot_mat, cv::Size(roiReserver, roiReserver));
     view(rotationRoi).copyTo(image);
     return image;
 }
@@ -336,8 +333,8 @@ cv::cuda::GpuMat Utilities::extractMapPart(const cv::cuda::GpuMat &map,
                                   const cv::Size &size, const cv::Point &position, double angle, float scale) {
     // Calculate how much data to crop out
     cv::cuda::GpuMat image;
-    float imangle = std::atan(((float) size.width) / ((float) size.height));
-    int roiReserver = (int) std::ceil(size.width / std::sin(imangle));
+    float imangle = std::atan(static_cast<float>(size.width) / static_cast<float>(size.height));
+    int roiReserver = static_cast<int>(std::ceil(size.width / std::sin(imangle)));
     int centerLoc = roiReserver / 2;
     // Cut part of map
     cv::cuda::GpuMat region = map(cv::Rect(position.x - centerLoc, position.y - centerLoc, roiReserver, roiReserver));

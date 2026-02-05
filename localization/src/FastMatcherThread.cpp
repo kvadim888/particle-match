@@ -36,7 +36,7 @@ std::string gen_number(std::string directory, const int len = 5) {
                 if(curValue > maxValue) {
                     maxValue = curValue;
                 }
-            } catch (boost::bad_lexical_cast e) {
+            } catch (const boost::bad_lexical_cast& e) {
                 // Don't care, just skip
             }
         }
@@ -67,8 +67,8 @@ cv::Point2f FastMatcherThread::match(cv::Mat image, cv::Mat templ, double direct
             image,
             templ,
             distance,
-            (float) -directionPrecision,
-            (float) directionPrecision
+            static_cast<float>(-directionPrecision),
+            static_cast<float>(directionPrecision)
     );
     cv::Point2f location = cv::Point2f(((corners[0].x + corners[2].x) / 2.f), ((corners[0].y + corners[2].y) / 2.f));
     if(debug) {
