@@ -2,15 +2,26 @@
 // Created by rokas on 2020-02-29.
 //
 
+#include <algorithm>
 #include "ImageSample.hpp"
+
+namespace {
+    inline cv::Point clampToImage(const cv::Point& pt, const cv::Mat& image) {
+        return cv::Point(
+            std::clamp(pt.x, 0, image.cols - 1),
+            std::clamp(pt.y, 0, image.rows - 1)
+        );
+    }
+}
 
 ImageSample::ImageSample(const cv::Mat& image, const std::vector<cv::Point>& samplePoints, float average) {
     for (const auto& p : samplePoints) {
-        double val = ((float) image.at<uint8_t>(p)) - average;
+        auto cp = clampToImage(p, image);
+        double val = static_cast<float>(image.at<uint8_t>(cp)) - average;
         squared_sum += val * val;
         sample.push_back(val);
     }
-    standart_deviation = std::sqrt(squared_sum);
+    standard_deviation = std::sqrt(squared_sum);
 };
 
 ImageSample::ImageSample(
@@ -32,15 +43,15 @@ ImageSample::ImageSample(
         cv::Point p = (ps + offset) - centerOffset;
 
         // Transform points
-        cv::Point pTran(
+        cv::Point pTran = clampToImage(cv::Point(
                 m11 * p.x + m12 * p.y + m13,
                 m21 * p.x + m22 * p.y + m23
-        );
-        double val = ((float) image.at<uint8_t>(pTran)) - average;
+        ), image);
+        double val = static_cast<float>(image.at<uint8_t>(pTran)) - average;
         squared_sum += val * val;
         sample.push_back(val);
     }
-    standart_deviation = std::sqrt(squared_sum);
+    standard_deviation = std::sqrt(squared_sum);
 }
 
 double ImageSample::calcSimilarity(const ImageSample& other) const {
@@ -49,7 +60,7 @@ double ImageSample::calcSimilarity(const ImageSample& other) const {
     for (int i = 0; i < sampleLen; i++) {
         top += sample[i] * other.sample[i];
     }
-    double res = top / (standart_deviation * other.standart_deviation);
+    double res = top / (standard_deviation * other.standard_deviation);
     if (res > 1.0 || res < -1.0) {
         std::cout << "Problem " << std::endl;
     }
@@ -59,16 +70,17 @@ double ImageSample::calcSimilarity(const ImageSample& other) const {
 ImageSample::ImageSample(const cv::Mat &image, const std::vector<cv::Point> &samplePoints) {
     double sum_ = 0.0;
     for (const auto& p : samplePoints) {
-        float val = ((float) image.at<uint8_t>(p));
+        auto cp = clampToImage(p, image);
+        float val = static_cast<float>(image.at<uint8_t>(cp));
         sum_ += val;
         sample.push_back(val);
     }
-    auto average = (float) (sum_ / (double) samplePoints.size());
+    auto average = static_cast<float>(sum_ / static_cast<double>(samplePoints.size()));
     for(float& val : sample) {
         val -= average;
         squared_sum += val * val;
     }
-    standart_deviation = std::sqrt(squared_sum);
+    standard_deviation = std::sqrt(squared_sum);
 }
 
 ImageSample::ImageSample(const cv::Mat &image, const std::vector<cv::Point> &samplePoints, const cv::Mat &rotation,
@@ -86,19 +98,19 @@ ImageSample::ImageSample(const cv::Mat &image, const std::vector<cv::Point> &sam
         cv::Point p = (ps + offset) - centerOffset;
 
         // Transform points
-        cv::Point pTran(
+        cv::Point pTran = clampToImage(cv::Point(
                 m11 * p.x + m12 * p.y + m13,
                 m21 * p.x + m22 * p.y + m23
-        );
-        double val = ((float) image.at<uint8_t>(pTran));
+        ), image);
+        double val = static_cast<float>(image.at<uint8_t>(pTran));
         sum_ += val;
         sample.push_back(val);
     }
-    auto average = (float) (sum_ / (double) samplePoints.size());
+    auto average = static_cast<float>(sum_ / static_cast<double>(samplePoints.size()));
     for(float& val : sample) {
         val -= average;
         squared_sum += val * val;
     }
-    standart_deviation = std::sqrt(squared_sum);
+    standard_deviation = std::sqrt(squared_sum);
 }
 

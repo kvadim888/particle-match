@@ -14,7 +14,6 @@ void ParticleFilterWorkspace::initialize(const MetadataEntry &metadata) {
     std::cout << "Initializing...";
     std::cout.flush();
     direction = metadata.imuOrientation.toRPY().getZ();
-    Particle::setDirection(direction);
     svoCurPosition = metadata.mapLocation;
     svoCoordinates = std::make_shared<GeographicLib::LocalCartesian>(
             metadata.latitude,
@@ -32,6 +31,7 @@ void ParticleFilterWorkspace::initialize(const MetadataEntry &metadata) {
             5, // bin_size_
             true // use_gaussian
     );
+    pfm->setDirection(direction);
     cv::Mat templ = metadata.getImageColored();
     pfm->setTemplate(templ);
     pfm->setImage(metadata.map);
@@ -49,7 +49,7 @@ void ParticleFilterWorkspace::update(const MetadataEntry &metadata) {
     cv::Point movement = getMovementFromSvo(metadata);
     updateScale(1.0, static_cast<float>(metadata.altitude), 640);
     direction = metadata.imuOrientation.toRPY().getZ();
-    Particle::setDirection(direction);
+    pfm->setDirection(direction);
     cv::Mat templ = metadata.getImageColored();
     pfm->setTemplate(templ);
     if(!affineMatching) {
@@ -59,8 +59,7 @@ void ParticleFilterWorkspace::update(const MetadataEntry &metadata) {
 #ifdef USE_CV_GPU
         corners = pfm->filterParticlesAffine(movement, bestTransform);
 #else
-        std::cerr << "Affine particle matching is available with GPU support only at this moment" << std::endl;
-        exit(1);
+        throw std::runtime_error("Affine particle matching is available with GPU support only");
 #endif
     }
 }
@@ -192,7 +191,7 @@ void ParticleFilterWorkspace::visualizeGT(const cv::Point &loc, double yaw, cv::
 }
 
 void ParticleFilterWorkspace::updateScale(float hfov, float altitude, uint32_t imageWidth) {
-    currentScale = (tan(hfov / 2.0f) * altitude) / ((float) imageWidth / 2.0f);
+    currentScale = (tan(hfov / 2.0f) * altitude) / (static_cast<float>(imageWidth) / 2.0f);
     pfm->setScale(currentScale * .9f, currentScale * 1.1f);
 }
 

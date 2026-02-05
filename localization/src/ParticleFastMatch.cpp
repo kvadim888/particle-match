@@ -15,10 +15,7 @@
 #include <tbb/parallel_for_each.h>
 #include <tbb/parallel_for.h>
 
-
-#define WITHIN(val, top_left, bottom_right) (\
-            val.x > top_left.x && val.y > top_left.y && \
-            val.x < bottom_right.x && val.y < bottom_right.y )
+#include "GeometryUtils.hpp"
 
 
 ParticleFastMatch::ParticleFastMatch(
@@ -36,7 +33,7 @@ ParticleFastMatch::ParticleFastMatch(
     kld_error = kld_error_;
     binSize = bin_size_;
     this->epsilon = epsilon;
-    this->no_of_points = (int) round(10 / (epsilon * epsilon));
+    this->no_of_points = static_cast<int>(round(10 / (epsilon * epsilon)));
     xs = cv::Mat(1, no_of_points, CV_32SC1);
     ys = cv::Mat(1, no_of_points, CV_32SC1);
     if (ztable.empty()) {
@@ -61,58 +58,11 @@ ParticleFastMatch::ParticleFastMatch(
             detector = cv::ORB::create();
             break;
     }
-    /*if(!detector.empty()) {
-        //matcher = std::make_shared<cv::cuda::DescriptorMatcher>();
-        matcher = cv::cuda::DescriptorMatcher::createBFMatcher(detector->defaultNorm());
-    }*/
-
 }
 
 void ParticleFastMatch::visualizeParticles(cv::Mat image, const cv::Point2i& offset) {
     visualizer.visualiseParticles(std::move(image), particles, offset);
 }
-
-
-/*
-vector<Point2f> ParticleFastMatch::filterParticles() {
-    // Randomly sample points
-    Mat xs(1, no_of_points, CV_32SC1),
-            ys(1, no_of_points, CV_32SC1);
-    rng.fill(xs, RNG::UNIFORM, 1, templ.cols);
-    rng.fill(ys, RNG::UNIFORM, 1, templ.rows);
-
-
-    std::vector<fast_match::MatchConfig> pConfigs = particles.getConfigs();
-    vector<AffineTransformation> affines = configsToAffine(pConfigs, insiders);
-    // Filter out configurations that fall outside of the boundaries
-    // the internal logic of configsToAffine has more information
-    std::vector<fast_match::MatchConfig> temp_configs;
-    for (int i = 0; i < insiders.size(); i++)
-        if (insiders[i] == true)
-            temp_configs.push_back(pConfigs[i]);
-    pConfigs = temp_configs;
-
-    // For the configs, calculate the scores / distances
-    distances = evaluateConfigs(image, templ, affines, xs, ys, true);
-    // Find the minimum distance
-    auto min_itr = min_element(distances.begin(), distances.end());
-    int min_index = static_cast<int>(min_itr - distances.begin());
-    double best_distance = distances[min_index];
-
-    //best_distances[level] = best_distance;
-
-    auto max_itr = max_element(distances.begin(), distances.end());
-    int max_index = static_cast<int>(max_itr - distances.begin());
-    double worst_distance = distances[max_index];
-
-    best_config = pConfigs[min_index];
-    best_trans = best_config.getAffineMatrix();
-
-    particles.printProbabilities();
-
-    return Utilities::calcCorners(image.size(), templ.size(), best_trans);
-}
-*/
 
 #ifdef USE_CV_GPU
 vector<Point> ParticleFastMatch::filterParticlesAffine(const cv::Point2f &movement, cv::Mat &bestTransform) {
@@ -134,7 +84,7 @@ vector<Point> ParticleFastMatch::filterParticlesAffine(const cv::Point2f &moveme
 
         std::string bin = newParticles[particleIndex].serialize(binSize);
         particleIndex++;
-        if (!(std::find(bins.begin(), bins.end(), bin) != bins.end())) {
+        if (std::find(bins.begin(), bins.end(), bin) == bins.end()) {
             // Mark bin as taken
             bins.push_back(bin);
             // Update number with support
@@ -142,7 +92,7 @@ vector<Point> ParticleFastMatch::filterParticlesAffine(const cv::Point2f &moveme
             if (support_particles >= 2) {
                 // update desired number
                 int k = support_particles - 1;
-                k = (int) ceil(k / (2 * kld_error) * pow(1 - 2 / (9.0 * k) + sqrt(2 / (9.0 * k)) * zvalue, 3));
+                k = static_cast<int>(ceil(k / (2 * kld_error) * pow(1 - 2 / (9.0 * k) + sqrt(2 / (9.0 * k)) * zvalue, 3)));
                 if (k > samplingCount) {
                     samplingCount = k;
                 }
@@ -152,10 +102,9 @@ vector<Point> ParticleFastMatch::filterParticlesAffine(const cv::Point2f &moveme
             }
         }
     } while (newParticles.size() < samplingCount);
-    tbb::parallel_for(0, (int) newParticles.size(), 1, [&] (int ip) {
+    tbb::parallel_for(0, static_cast<int>(newParticles.size()), 1, [&] (int ip) {
         double probability;
         cv::Mat transform = evaluateParticle(newParticles[ip], ip, probability);
-        //i++;
         if(probability < bestProbability) {
             bestTransform = transform;
             bestProbability = probability;
@@ -181,16 +130,16 @@ void ParticleFastMatch::propagateParticles(const cv::Point2f& movement) {
 }
 
 void ParticleFastMatch::setDirection(const double &_d) {
-    Particle::setDirection(_d);
+    particles.getConfig()->direction = _d;
 }
 
 vector<double>
 ParticleFastMatch::evaluateConfigs(Mat &templ, vector<AffineTransformation> &affine_matrices, Mat &xs, Mat &ys,
                                    bool photometric_invariance) {
-    int r1x = (int) (0.5 * (templ.cols - 1)),
-            r1y = (int) (0.5 * (templ.rows - 1)),
-            r2x = (int) (0.5 * (image.cols - 1)),
-            r2y = (int) (0.5 * (image.rows - 1));
+    int r1x = static_cast<int>(0.5 * (templ.cols - 1)),
+            r1y = static_cast<int>(0.5 * (templ.rows - 1)),
+            r2x = static_cast<int>(0.5 * (image.cols - 1)),
+            r2y = static_cast<int>(0.5 * (image.rows - 1));
 
     int no_of_configs = static_cast<int>(affine_matrices.size());
     int no_of_points = xs.cols;
@@ -279,14 +228,6 @@ ParticleFastMatch::evaluateConfigs(Mat &templ, vector<AffineTransformation> &aff
         }
 
         distances[i] = score / no_of_points;
-        /*if(particleId >= 0) {
-            if(particleId < particles.size()) {
-                particles[particleId].setMinimalProbability(static_cast<float>(distances[i]));
-            } else {
-                std::cerr << "Warning: Particle deos not exist? .. \n";
-                return false;
-            }
-        }*/
     });
 
 
@@ -295,63 +236,21 @@ ParticleFastMatch::evaluateConfigs(Mat &templ, vector<AffineTransformation> &aff
 }
 
 vector<AffineTransformation> ParticleFastMatch::configsToAffine(vector<fast_match::MatchConfig> &configs, vector<bool> &insiders) {
-    int no_of_configs = static_cast<int>(configs.size());
-    vector<Mat> affines((unsigned long) no_of_configs);
+    // Delegate core affine computation to Utilities
+    Utilities::configsToAffine(configs, insiders, image.size(), templ.size());
 
-    /* The boundary, between -10 to image size + 10 */
-    Point2d top_left(-10., -10.);
-    Point2d bottom_right(image.cols + 10, image.rows + 10);
-
-
-    /* These are for the calculations of affine transformed corners */
-    int r1x = (templ.cols - 1) / 2,
-            r1y = (templ.rows - 1) / 2,
-            r2x = (image.cols - 1) / 2,
-            r2y = (image.rows - 1) / 2;
-
-    Mat corners = (Mat_<float>(3, 4) << 1 - (r1x + 1), templ.cols - (r1x + 1), templ.cols - (r1x + 1), 1 - (r1x + 1),
-            1 - (r1y + 1), 1 - (r1y + 1), templ.rows - (r1y + 1), templ.rows - (r1y + 1),
-            1.0, 1.0, 1.0, 1.0);
-
-    Mat transl = (Mat_<float>(4, 2) << r2x + 1, r2y + 1,
-            r2x + 1, r2y + 1,
-            r2x + 1, r2y + 1,
-            r2x + 1, r2y + 1);
-
-    insiders.assign((unsigned long) no_of_configs, false);
-
-    /* Convert each configuration to corresponding affine transformation matrix */
-    tbb::parallel_for(0, no_of_configs, 1, [&](int i) {
-        Mat affine = configs[i].getAffineMatrix();
-
-        /* Check if our affine transformed rectangle still fits within our boundary */
-        Mat affine_corners = (affine * corners).t();
-        affine_corners = affine_corners + transl;
-
-        if (WITHIN(affine_corners.at<Point2f>(0, 0), top_left, bottom_right) &&
-            WITHIN(affine_corners.at<Point2f>(1, 0), top_left, bottom_right) &&
-            WITHIN(affine_corners.at<Point2f>(2, 0), top_left, bottom_right) &&
-            WITHIN(affine_corners.at<Point2f>(3, 0), top_left, bottom_right)) {
-
-            affines[i] = affine;
-            insiders[i] = true;
-        }
-    });
-
-    /* Filter out empty affine matrices (which initially don't fit within the preset boundary) */
-    /* It's done this way, so that I could parallelize the loop */
+    // Wrap insider configs into AffineTransformation objects with particle ids
     vector<AffineTransformation> result;
-    for (int i = 0; i < no_of_configs; i++) {
-        if (insiders[i]){
+    for (size_t i = 0; i < insiders.size(); i++) {
+        if (insiders[i]) {
             AffineTransformation transformation;
-            transformation.T = affines[i];
+            transformation.T = configs[i].getAffineMatrix();
             transformation.id = configs[i].getId();
             result.push_back(transformation);
         }
     }
 
     return result;
-
 }
 
 void ParticleFastMatch::initTemplatePixels() {
@@ -371,8 +270,8 @@ Mat ParticleFastMatch::evaluateParticle(Particle& particle, int id, double &best
     /* Filter out configurations that fall outside of the boundaries */
     /* the internal logic of configsToAffine has more information */
     std::vector<fast_match::MatchConfig> temp_configs;
-    for (int i = 0; i < particle.insiders.size(); i++)
-        if (particle.insiders[i] == true)
+    for (size_t i = 0; i < particle.insiders.size(); i++)
+        if (particle.insiders[i])
             temp_configs.push_back(pConfigs[i]);
     pConfigs = temp_configs;
 
@@ -382,8 +281,6 @@ Mat ParticleFastMatch::evaluateParticle(Particle& particle, int id, double &best
     auto min_itr = min_element(pDistances.begin(), pDistances.end());
     int min_index = static_cast<int>(min_itr - pDistances.begin());
     bestProbability = pDistances[min_index];
-
-    //particle.setProbability((float) bestProbability);
 
     return pConfigs[min_index].getAffineMatrix();
 }
@@ -401,8 +298,7 @@ void ParticleFastMatch::buildZTable() {
             ztable.push_back(tmp);
         }
     } else {
-        std::cerr << "ztable.data does not exist. Error!\n";
-        std::exit(-1);
+        throw std::runtime_error("ztable.data does not exist");
     }
 
 }
@@ -426,10 +322,10 @@ void ParticleFastMatch::setTemplate(const Mat &templ_) {
 #endif
         case PearsonCorrelation: {
             if (samplingPoints.empty()) {
-                for (int y_ = 0; y_ < (float) (templ_.rows * templ_.cols) * 0.1f; y_++) {
+                for (int y_ = 0; y_ < static_cast<int>(templ_.rows * templ_.cols * 0.1f); y_++) {
                     samplingPoints.emplace_back(
-                            (int) (Utilities::uniform_dist() * templ_.cols),
-                            (int) (Utilities::uniform_dist() * templ_.rows)
+                            static_cast<int>(Utilities::uniform_dist() * templ_.cols),
+                            static_cast<int>(Utilities::uniform_dist() * templ_.rows)
                     );
                 }
 
@@ -478,7 +374,7 @@ std::vector<cv::Point> ParticleFastMatch::filterParticles(const cv::Point2f &mov
             if (support_particles >= 2) {
                 // update desired number
                 int k = support_particles - 1;
-                k = (int) ceil(k / (2 * kld_error) * pow(1 - 2 / (9.0 * k) + sqrt(2 / (9.0 * k)) * zvalue, 3));
+                k = static_cast<int>(ceil(k / (2 * kld_error) * pow(1 - 2 / (9.0 * k) + sqrt(2 / (9.0 * k)) * zvalue, 3)));
                 if (k > samplingCount) {
                     samplingCount = k;
                 }
@@ -492,7 +388,7 @@ std::vector<cv::Point> ParticleFastMatch::filterParticles(const cv::Point2f &mov
     tbb::parallel_for_each(newParticles.begin(), newParticles.end(), [&] (Particle& particle) {
         cv::Mat rot_mat = particle.mapTransformation();
         ImageSample mapSample(imageGray, samplingPoints, rot_mat, particle.toPoint());
-        auto ccoef = (float) templateSample.calcSimilarity(mapSample);
+        auto ccoef = static_cast<float>(templateSample.calcSimilarity(mapSample));
         particle.setCorrelation(ccoef);
         particle.setProbability(convertProbability(ccoef));
     });
@@ -553,7 +449,7 @@ float ParticleFastMatch::calculateSimilarity(cv::Mat im) const {
                 }
             }
 
-            return weight / (float) templDescriptors.rows;
+            return weight / static_cast<float>(templDescriptors.rows);
         }
 #endif
     }
@@ -564,9 +460,6 @@ float glf(float x, float v = .3f, float B = 5.f, float Q = 1.f, float C = 1.f, f
 }
 
 float normalGLF(float x, float v) {
-    //float a = static_cast<float>(1.f / (sigma * std::sqrt(2.f * M_PI)));
-    //float exponent = std::exp(-(std::pow((x - mu) / sigma, 2.0f) / 2.0f));
-    //return a * exponent;
     return glf(x, v) / glf(1.0f, v);
 }
 
@@ -610,8 +503,7 @@ void ParticleFastMatch::calculateSimilarity(cv::cuda::GpuMat im, Particle& parti
             break;
         }
         case BriskMatch: {
-            std::cerr << "BRISK GPU IMPLEMENTATION IS NOT AVAILABLE\n";
-            exit(10);
+            throw std::runtime_error("BRISK GPU implementation is not available");
         }
         case ORBMatch: {
             using namespace std::chrono;
@@ -640,7 +532,7 @@ void ParticleFastMatch::calculateSimilarity(cv::cuda::GpuMat im, Particle& parti
                 }
             }
             particle.setCorrelation(-INFINITY);
-            particle.setProbability(weight / (float) templGpuDescriptors.rows);
+            particle.setProbability(weight / static_cast<float>(templGpuDescriptors.rows));
             break;
         }
     }

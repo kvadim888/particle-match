@@ -5,7 +5,8 @@ project(particle-match)
 include_directories(localization)
 include_directories(dataset_reader/include)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_definitions(-fext-numeric-literals)
 
 option(USE_OPENCV_CUDA "Enable this flag to compile features requiring GPU support" OFF)

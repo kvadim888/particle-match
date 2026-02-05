@@ -11,7 +11,7 @@ class ImageSample {
 public:
     std::vector<float> sample;
     double squared_sum = 0.0;
-    double standart_deviation = 0.0;
+    double standard_deviation = 0.0;
 
     ImageSample(const cv::Mat& image, const std::vector<cv::Point>& samplePoints, float average);
 
@@ -33,6 +33,10 @@ public:
     );
 
     ImageSample() = default;
+    ImageSample(const ImageSample&) = default;
+    ImageSample(ImageSample&&) noexcept = default;
+    ImageSample& operator=(const ImageSample&) = default;
+    ImageSample& operator=(ImageSample&&) noexcept = default;
 
     double calcSimilarity(const ImageSample& other) const;
 };

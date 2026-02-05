@@ -18,9 +18,6 @@
 #include "ConfigExpanderBase.hpp"
 #include "ConfigVisualizer.hpp"
 
-using namespace std;
-using namespace cv;
-
 namespace fast_match {
     class FAsTMatch{
     public:
@@ -29,46 +26,47 @@ namespace fast_match {
         virtual void init( float epsilon = 0.15f, float delta = 0.25f, bool photometric_invariance = false,
                    float min_scale = 0.5f, float max_scale = 2.0f );
 
-        virtual void apply(Mat &image, Mat &templ, double &best_distance,
-                              float min_rotation = (float) -M_PI, float max_rotation = (float) M_PI);
+        virtual void apply(cv::Mat &image, cv::Mat &templ, double &best_distance,
+                              float min_rotation = static_cast<float>(-M_PI),
+                              float max_rotation = static_cast<float>(M_PI));
         virtual void calculate();
-        virtual vector<Point> getBestCorners();
+        virtual std::vector<cv::Point> getBestCorners();
 
 
         bool calculateLevel();
         int no_of_points = 0;
         int level = 0;
         cv::Mat original_image;
-        Mat imageGray, templGray;
+        cv::Mat imageGray, templGray;
         float imageGrayAvg = 0.0;
 
     protected:
 #ifdef USE_CV_GPU
         cv::cuda::GpuMat imageGrayGpu, templGrayGpu;
 #endif
-        Mat image, templ;
+        cv::Mat image, templ;
         float templAvg = 0.0;
         float imageAvg = 0.0;
         float templGrayAvg = 0.0;
 
     public:
-        virtual void setImage(const Mat &image);
+        virtual void setImage(const cv::Mat &image);
 
-        virtual void setTemplate(const Mat &templ);
+        virtual void setTemplate(const cv::Mat &templ);
 
-        static vector<double> evaluateConfigs( Mat& image, Mat& templ, vector<Mat>& affine_matrices,
-                                        Mat& xs, Mat& ys, bool photometric_invariance );
+        static std::vector<double> evaluateConfigs( cv::Mat& image, cv::Mat& templ, std::vector<cv::Mat>& affine_matrices,
+                                        cv::Mat& xs, cv::Mat& ys, bool photometric_invariance );
 
     protected:
 
-        RNG rng;
+        cv::RNG rng;
         float epsilon;
         float delta;
         bool photometricInvariance;
         float minScale;
         float maxScale;
-        Size halfTempl;
-        Size halfImage;
+        cv::Size halfTempl;
+        cv::Size halfImage;
 
         std::shared_ptr<ConfigExpanderBase> configExpander;
         ConfigVisualizer visualizer;
@@ -76,32 +74,27 @@ namespace fast_match {
 
 
 
-        /*vector<MatchConfig> createListOfConfigs( MatchNet& net, Size templ_size, Size image_size );*/
-        vector<Mat> configsToAffine( vector<MatchConfig>& configs, vector<bool>& insiders );
+        std::vector<cv::Mat> configsToAffine( std::vector<MatchConfig>& configs, std::vector<bool>& insiders );
 
-        vector<MatchConfig> getGoodConfigsByDistance( vector<MatchConfig>& configs, float best_dist, float new_delta,
-                                                      vector<double>& distances, float& thresh, bool& too_high_percentage );
-
-        /*vector<MatchConfig> randomExpandConfigs( vector<MatchConfig>& configs, MatchNet& net,
-                                                 int level, int no_of_points, float delta_factor );*/
-
+        std::vector<MatchConfig> getGoodConfigsByDistance( std::vector<MatchConfig>& configs, float best_dist, float new_delta,
+                                                      std::vector<double>& distances, float& thresh, bool& too_high_percentage );
 
         float delta_fact = 1.511f;
         float new_delta;
 
 
         MatchConfig best_config;
-        Mat best_trans;
-        vector<double> best_distances;
-        vector<double> distances;
-        vector<bool> insiders;
-        vector<MatchConfig> configs;
+        cv::Mat best_trans;
+        std::vector<double> best_distances;
+        std::vector<double> distances;
+        std::vector<bool> insiders;
+        std::vector<MatchConfig> configs;
 
     };
 }
 
 template<typename type>
-ostream &operator <<( ostream& os, const std::pair<type, type> & vec ) {
+std::ostream &operator <<( std::ostream& os, const std::pair<type, type> & vec ) {
     os << "[";
     os << vec.first << " " << vec.second;
     os << "]";
@@ -109,9 +102,9 @@ ostream &operator <<( ostream& os, const std::pair<type, type> & vec ) {
 }
 
 template<typename type>
-ostream &operator <<( ostream& os, const vector<type> & vec ) {
+std::ostream &operator <<( std::ostream& os, const std::vector<type> & vec ) {
     os << "[";
-    std::copy( vec.begin(), vec.end(), ostream_iterator<type>(os, ", ") );
+    std::copy( vec.begin(), vec.end(), std::ostream_iterator<type>(os, ", ") );
     os << "]";
     return os;
 }

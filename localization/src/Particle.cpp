@@ -2,33 +2,17 @@
 // Created by rokas on 17.6.20.
 //
 
-#include <zconf.h>
 #include <src/Utilities.hpp>
 #include <src/FastMatch.hpp>
 #include "Particle.hpp"
+#include "GeometryUtils.hpp"
 
-float Particle::r_step = 0.05f;
+// Default image center used for coordinate transformations
+static constexpr int kDefaultHalfWidth = 320;
+static constexpr int kDefaultHalfHeight = 240;
 
-double Particle::direction = .0;
-
-// -5deg ~ + 5deg
-std::vector<float> Particle::r_initial = {
-        -(3 * Particle::r_step),
-        -(2.5f * Particle::r_step),
-        -(2 * Particle::r_step),
-        -(1.5f * Particle::r_step),
-        -(Particle::r_step),
-        -(0.5f * Particle::r_step),
-        0.f,
-        0.5f * Particle::r_step,
-        Particle::r_step,
-        1.5f * Particle::r_step,
-        2 * Particle::r_step,
-        2.5f * Particle::r_step,
-        3 * Particle::r_step
-};
-
-cv::Point2i Particle::mapCenter;
+// Direction calibration offset in degrees
+static constexpr float kDirectionOffsetDeg = 75.0f;
 
 float Particle::getProbability() const {
     return probability;
@@ -44,16 +28,16 @@ void Particle::setProbability(float probability) {
         iteration++;
     }
     Particle::probability = accumulatedProbability / iteration;
-    //Particle::probability = probability;
 }
 
-Particle::Particle(int x, int y) : x(x), y(y), probability(1.0) {
+Particle::Particle(int x, int y, const std::shared_ptr<ParticleConfig>& config)
+    : config(config), x(x), y(y), probability(1.0) {
     updateConfigs();
 }
 
-const vector<fast_match::MatchConfig> &Particle::getConfigs(int id) {
-    for (auto &config : configs) {
-        config.setId(id);
+const std::vector<fast_match::MatchConfig> &Particle::getConfigs(int id) {
+    for (auto &cfg : configs) {
+        cfg.setId(id);
     }
     return configs;
 }
@@ -86,39 +70,30 @@ void Particle::propagate(const cv::Point2f &movement) {
     updateConfigs();
 }
 
-void Particle::setMapDimensions(const cv::Size &dims) {
-    mapCenter.y = dims.height / 2;
-    mapCenter.x = dims.width / 2;
-}
-
-void Particle::setDirection(double direction) {
-    Particle::direction = direction;
-}
-
 void Particle::updateConfigs() {
     configs.clear();
-    auto scale_steps = (int) s_initial->size();
-    auto rotation_steps = (int) r_initial.size();
+    auto scale_steps = static_cast<int>(s_initial->size());
+    auto rotation_steps = static_cast<int>(config->r_initial.size());
 
-    static std::vector<float> r2_rotations = {
-            -(3 * Particle::r_step),
+    std::vector<float> r2_rotations = {
+            -(3 * config->r_step),
             0,
-            3 * Particle::r_step,
+            3 * config->r_step,
     };
-    unsigned long nr2_steps = r2_rotations.size();
+    auto nr2_steps = r2_rotations.size();
 
-    auto rotations = r_initial;
+    auto rotations = config->r_initial;
     for (float &rotation : rotations) {
-        rotation += Particle::direction;
+        rotation += config->direction;
     }
 
-    for (uint64_t sx = 0; sx < scale_steps; sx++) {
-        for (uint64_t sy = 0; sy < scale_steps; sy++) {
+    for (size_t sx = 0; sx < static_cast<size_t>(scale_steps); sx++) {
+        for (size_t sy = 0; sy < static_cast<size_t>(scale_steps); sy++) {
             for (int r1 = 0; r1 < rotation_steps; r1++) {
-                for (int r2 = 0; r2 < nr2_steps; r2++) {
+                for (size_t r2 = 0; r2 < nr2_steps; r2++) {
                     configs.emplace_back(
-                            x - mapCenter.x,
-                            y - mapCenter.y,
+                            x - config->mapCenter.x,
+                            y - config->mapCenter.y,
                             r2_rotations[r2],
                             s_initial->at(sx),
                             s_initial->at(sy),
@@ -139,7 +114,7 @@ double Particle::evaluate(cv::Mat &image, cv::Mat &templ, cv::Mat &xs, cv::Mat &
     int min_index = static_cast<int>(min_itr - distances.begin());
     double best_distance = distances[min_index];
     bestTransform = configs[min_index].getAffineMatrix();
-    setProbability((float) best_distance);
+    setProbability(static_cast<float>(best_distance));
     return best_distance;
 }
 
@@ -150,14 +125,14 @@ std::vector<cv::Mat> Particle::getAffines(const cv::Size &imageSize, const cv::S
     /* Filter out configurations that fall outside of the boundaries */
     /* the internal logic of configsToAffine has more information */
     std::vector<fast_match::MatchConfig> temp_configs;
-    for (int i = 0; i < insiders.size(); i++)
-        if (insiders[i] == true)
+    for (size_t i = 0; i < insiders.size(); i++)
+        if (insiders[i])
             temp_configs.push_back(configs[i]);
     configs = temp_configs;
     return affines;
 }
 
-const Mat &Particle::getBestTransform() const {
+const cv::Mat &Particle::getBestTransform() const {
     return bestTransform;
 }
 
@@ -201,20 +176,20 @@ std::string Particle::serialize(int binSize) {
     return std::to_string(x - (x % binSize)) + "x" + std::to_string(y - (y % binSize));
 }
 
-void Particle::setS_initial(const shared_ptr<vector<float>> &s_initial) {
+void Particle::setS_initial(const std::shared_ptr<std::vector<float>> &s_initial) {
     Particle::s_initial = s_initial;
 }
 
 cv::Point2i Particle::getLocationInMapCoords() const {
-    return {x - mapCenter.x, y - mapCenter.y};
+    return {x - config->mapCenter.x, y - config->mapCenter.y};
 }
 
-double Particle::getDirection() {
-    return direction;
+double Particle::getDirection() const {
+    return config->direction;
 }
 
 double Particle::getDirectionDegrees() const {
-    return direction * 57.2958;
+    return config->direction * geometry::kRadToDeg;
 }
 
 cv::Point2i Particle::toPoint() const {
@@ -222,12 +197,12 @@ cv::Point2i Particle::toPoint() const {
 }
 
 cv::Mat Particle::staticTransformation() const {
-    cv::Mat T = cv::getRotationMatrix2D(cv::Point(320, 240), getDirectionDegrees(), getScale());
+    cv::Mat T = cv::getRotationMatrix2D(cv::Point(kDefaultHalfWidth, kDefaultHalfHeight), getDirectionDegrees(), getScale());
     return T;
 }
 
 cv::Mat Particle::mapTransformation() const {
-    return cv::getRotationMatrix2D(toPoint(), getDirectionDegrees() - 75.0f, getScale());
+    return cv::getRotationMatrix2D(toPoint(), getDirectionDegrees() - kDirectionOffsetDeg, getScale());
 }
 
 float Particle::getScale() const {
@@ -264,7 +239,9 @@ cv::Mat Particle::getMapImage(const cv::Mat &map, const cv::Size &imsize) const 
                     m11 * p.x + m12 * p.y + m13,
                     m21 * p.x + m22 * p.y + m23
             );
-            preview.at<uint8_t>(cv::Point2i(cx, cy)) = map.at<uint8_t>(pTran);
+            if (pTran.x >= 0 && pTran.x < map.cols && pTran.y >= 0 && pTran.y < map.rows) {
+                preview.at<uint8_t>(cv::Point2i(cx, cy)) = map.at<uint8_t>(pTran);
+            }
         }
     }
     return preview;
@@ -280,23 +257,26 @@ std::vector<cv::Point> Particle::getCorners() const {
             m23 = T.at<double>(1, 2);
     return {
             cv::Point2i(
-                    m11 * (x - 320) + m12 * (y - 240) + m13,
-                    m21 * (x - 320) + m22 * (y - 240) + m23
+                    m11 * (x - kDefaultHalfWidth) + m12 * (y - kDefaultHalfHeight) + m13,
+                    m21 * (x - kDefaultHalfWidth) + m22 * (y - kDefaultHalfHeight) + m23
             ),
             cv::Point2i(
-                    m11 * (x + 320) + m12 * (y - 240) + m13,
-                    m21 * (x + 320) + m22 * (y - 240) + m23
+                    m11 * (x + kDefaultHalfWidth) + m12 * (y - kDefaultHalfHeight) + m13,
+                    m21 * (x + kDefaultHalfWidth) + m22 * (y - kDefaultHalfHeight) + m23
             ),
             cv::Point2i(
-                    m11 * (x + 320) + m12 * (y + 240) + m13,
-                    m21 * (x + 320) + m22 * (y + 240) + m23
+                    m11 * (x + kDefaultHalfWidth) + m12 * (y + kDefaultHalfHeight) + m13,
+                    m21 * (x + kDefaultHalfWidth) + m22 * (y + kDefaultHalfHeight) + m23
             ),
             cv::Point2i(
-                    m11 * (x - 320) + m12 * (y + 240) + m13,
-                    m21 * (x - 320) + m22 * (y + 240) + m23
+                    m11 * (x - kDefaultHalfWidth) + m12 * (y + kDefaultHalfHeight) + m13,
+                    m21 * (x - kDefaultHalfWidth) + m22 * (y + kDefaultHalfHeight) + m23
             )
     };
 }
 
 Particle::Particle(const Particle &a) = default;
 
+void Particle::setConfig(const std::shared_ptr<ParticleConfig>& cfg) {
+    config = cfg;
+}
