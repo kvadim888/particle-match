@@ -8,7 +8,6 @@
 
 #include <iostream>
 #include <opencv2/opencv.hpp>
-#include <opencv/highgui.h>
 #include <chrono>
 
 #include<boost/tokenizer.hpp>
@@ -73,8 +72,6 @@ int main(int argc, const char *argv[]) {
     );
     fast_match.setDirection(initParams[2]);
     fast_match.setImage(image.clone());
-    /*cv::namedWindow("template");
-    cv::namedWindow("best_view");*/
     std::cout << "\"Iteration\",\"Particle count\",\"Distance\",\"Odometry distance\",\"LocX\",\"LocY\",\"PreX\",\"PreY\",\"OdoX\",\"OdoY\"\n";
     cv::Mat bestTransform;
     for (int i = 0; i < 280; i++) {
@@ -118,19 +115,6 @@ int main(int argc, const char *argv[]) {
         std::cout << curloc.x << "," << curloc.y << "," << prediction.x << "," << prediction.y << ","
                   << odoLoc.x << "," << odoLoc.y << "\n";
 
-        /*fast_match.visualizeParticles(map);
-        line( map, corners[0], corners[1], Scalar(0, 0, 255), 4);
-        line( map, corners[1], corners[2], Scalar(0, 0, 255), 4);
-        line( map, corners[2], corners[3], Scalar(0, 0, 255), 4);
-        line( map, corners[3], corners[0], Scalar(0, 0, 255), 4);
-        cv::Point2i arrowhead((corners[0].x + corners[1].x) / 2, (corners[0].y + corners[1].y) / 2);
-        cv::arrowedLine(map, bestParticleLocation, arrowhead, CV_RGB(255,0,0), 20);
-        visualizeGT(curloc, params[2], map, 20, 20, CV_RGB(255, 255, 0));
-        visualizeGT(prediction, params[2], map, 20, 20, CV_RGB(255, 255, 255));
-        cv::imshow("best_view", bestView);
-        cv::imshow("Preview", map);
-        cv::imshow("template", templ);
-        cv::waitKey(100);*/
     }
     return 0;
 }

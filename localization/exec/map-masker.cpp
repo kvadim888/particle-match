@@ -112,8 +112,6 @@ int main(int ac, char *av[]) {
             map.pixelCoordinates(cv::Point(mapImage.cols, mapImage.rows))
     );
 
-    cv::namedWindow("preview", cv::WINDOW_NORMAL);
-
     if(streets) {
         std::vector<std::vector<cv::Point>> cvStreets;
         std::cout << "Street count = " <<  streets->ways.size() << "\n";

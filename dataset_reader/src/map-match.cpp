@@ -59,9 +59,6 @@ int main(int ac, char *av[]) {
 
     cv::resize(map, map, cv::Size(0, 0), 0.33, 0.33);
     cv::imwrite("map.png", map);
-    cv::namedWindow("Map", CV_WINDOW_AUTOSIZE);
-    cv::imshow("Map", map);
-    cv::waitKey(0);
 
     return 0;
 }

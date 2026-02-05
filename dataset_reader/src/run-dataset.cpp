@@ -42,12 +42,6 @@ int main(int ac, char *av[]) {
         return 1;
     }
 
-    // Some information
-    std::cout << "Press ESC key to exit.\n";
-
-    // Declare window to preview the image
-    cv::namedWindow("Preview", CV_WINDOW_NORMAL);
-
     // Declare reader
     MetadataEntryReader reader;
     if(vm.count("map-image") && vm.count("map-description")) {
@@ -71,23 +65,10 @@ int main(int ac, char *av[]) {
             // Parse line by line into the structure
             MetadataEntry entry;
             while (reader.readNextEntry(entry)) {
-                cv::Mat image;
-                // Display the image
                 if(vm.count("sharpen")) {
-                    image = entry.getImageSharpened(static_cast<bool>(vm.count("blur")));
+                    entry.getImageSharpened(static_cast<bool>(vm.count("blur")));
                 } else {
-                    image = entry.getImage();
-                }
-
-                // Preview the image
-                cv::imshow("Preview", image);
-
-                // Show at ~50 FPS
-                int key = cv::waitKey(20);
-
-                // Break the cycle on ESC key
-                if(key == 27) {
-                    break;
+                    entry.getImage();
                 }
             }
         } else {

@@ -23,8 +23,6 @@ void ConfigVisualizer::visualiseConfigs(cv::Mat image, const std::vector<fast_ma
             drawnPoints.push_back(curPoint);
         }
     }
-    cv::imshow("Preview", image);
-    cv::waitKey(1000);
 }
 
 ConfigVisualizer::ConfigVisualizer() = default;

@@ -87,8 +87,6 @@ int main(int ac, char *av[]) {
     std::vector<cv::Point> samplePoints;
 
 
-    cv::namedWindow("cam", cv::WINDOW_NORMAL);
-    cv::namedWindow("map", cv::WINDOW_NORMAL);
     if (fs::exists(datasetPath / "metadata.csv") && reader.openDirectory(datasetPath.string())) {
         MetadataEntry entry;
         int iteration = 0;
@@ -171,10 +169,6 @@ int main(int ac, char *av[]) {
         std::cout << "Max false similarity: " << maxFalse << std::endl;
 
 
-        cv::imshow("cam", camview);
-        cv::waitKey(10);
-        cv::imshow("map", mapview);
-        cv::waitKey(0);
     } else {
         std::cerr << "Dataset directory does not contain metadata.csv file!\n";
         std::cout << desc << "\n";
