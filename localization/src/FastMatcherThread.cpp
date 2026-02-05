@@ -2,7 +2,6 @@
 // Created by rokas on 17.5.8.
 //
 
-#include <thread>
 #include <chrono>
 #include <boost/filesystem.hpp>
 #include <boost/range/iterator_range.hpp>
@@ -15,7 +14,7 @@
 using namespace std::chrono;
 
 
-FastMatcherThread::FastMatcherThread() : matcher(), lock(mtex, std::defer_lock) {
+FastMatcherThread::FastMatcherThread() : matcher() {
     matcher.init(0.05f, 0.9f, true, 0.9f, 1.1f);
 }
 
@@ -94,28 +93,26 @@ cv::Point2f FastMatcherThread::match(cv::Mat image, cv::Mat templ, double direct
 }
 
 bool FastMatcherThread::isRunning() {
-    return (bool) lock;
+    return future_.valid() &&
+           future_.wait_for(std::chrono::seconds(0)) != std::future_status::ready;
 }
 
 bool FastMatcherThread::getResultIfAvailable(cv::Point2f &result) {
-    if(resultAvailable) {
-        result = processingResult;
-        resultAvailable = false;
+    if (future_.valid() &&
+        future_.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+        result = future_.get();
         return true;
-    } else {
-        return false;
     }
+    return false;
 }
 
 void FastMatcherThread::matchAsync(cv::Mat image, cv::Mat templ, double direction) {
-    if(!lock) {
+    if (!isRunning()) {
         cv::Mat im, tm;
         image.copyTo(im);
         templ.copyTo(tm);
-        std::thread([this, im, tm, direction] {
-            std::lock_guard<decltype(lock)> guard(lock);
-            processingResult = match(im, tm, direction);
-            resultAvailable = true;
-        }).detach();
+        future_ = std::async(std::launch::async, [this, im, tm, direction] {
+            return match(im, tm, direction);
+        });
     }
 }

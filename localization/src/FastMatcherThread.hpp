@@ -6,16 +6,13 @@
 
 
 #include <FAsT-Match/FAsTMatch.h>
-#include <mutex>
+#include <future>
 
 class FastMatcherThread {
 protected:
     fast_match::FAsTMatch matcher;
     double directionPrecision = M_PI_4;
-    std::mutex mtex;
-    std::unique_lock<std::mutex> lock;
-    cv::Point2f processingResult;
-    bool resultAvailable = false;
+    std::future<cv::Point2f> future_;
     bool debug = true;
     double scaleDownFactor = .5;
 

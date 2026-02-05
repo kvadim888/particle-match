@@ -75,58 +75,7 @@ namespace fast_match {
      * But filter out all the rectangles that are out of the given boundaries.
      **/
     vector<Mat> FAsTMatch::configsToAffine(vector<MatchConfig> &configs, vector<bool> &insiders) {
-        int no_of_configs = static_cast<int>(configs.size());
-        vector<Mat> affines(static_cast<size_t>(no_of_configs));
-
-        /* The boundary, between -10 to image size + 10 */
-        Point2d top_left(-geometry::kBoundaryPadding, -geometry::kBoundaryPadding);
-        Point2d bottom_right(image.cols + geometry::kBoundaryPadding, image.rows + geometry::kBoundaryPadding);
-
-
-        /* These are for the calculations of affine transformed corners */
-        int r1x = 0.5 * (templ.cols - 1),
-                r1y = 0.5 * (templ.rows - 1),
-                r2x = 0.5 * (image.cols - 1),
-                r2y = 0.5 * (image.rows - 1);
-
-        Mat corners = (Mat_<float>(3, 4) << 1 - (r1x + 1), templ.cols - (r1x + 1), templ.cols - (r1x + 1), 1 - (r1x + 1),
-                1 - (r1y + 1), 1 - (r1y + 1), templ.rows - (r1y + 1), templ.rows - (r1y + 1),
-                1.0, 1.0, 1.0, 1.0);
-
-        Mat transl = (Mat_<float>(4, 2) << r2x + 1, r2y + 1,
-                r2x + 1, r2y + 1,
-                r2x + 1, r2y + 1,
-                r2x + 1, r2y + 1);
-
-        insiders.assign(static_cast<size_t>(no_of_configs), false);
-
-        /* Convert each configuration to corresponding affine transformation matrix */
-        tbb::parallel_for(0, no_of_configs, 1, [&](int i) {
-            Mat affine = configs[i].getAffineMatrix();
-
-            /* Check if our affine transformed rectangle still fits within our boundary */
-            Mat affine_corners = (affine * corners).t();
-            affine_corners = affine_corners + transl;
-
-            if (isWithinBounds(affine_corners.at<Point2f>(0, 0), top_left, bottom_right) &&
-                isWithinBounds(affine_corners.at<Point2f>(1, 0), top_left, bottom_right) &&
-                isWithinBounds(affine_corners.at<Point2f>(2, 0), top_left, bottom_right) &&
-                isWithinBounds(affine_corners.at<Point2f>(3, 0), top_left, bottom_right)) {
-
-                affines[i] = affine;
-                insiders[i] = true;
-            }
-        });
-
-        /* Filter out empty affine matrices (which initially don't fit within the preset boundary) */
-        /* It's done this way, so that I could parallelize the loop */
-        vector<Mat> result;
-        for (int i = 0; i < no_of_configs; i++) {
-            if (insiders[i])
-                result.push_back(affines[i]);
-        }
-
-        return result;
+        return Utilities::configsToAffine(configs, insiders, image.size(), templ.size());
     }
 
 
