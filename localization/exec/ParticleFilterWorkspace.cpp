@@ -10,7 +10,7 @@
 
 namespace fs = boost::filesystem;
 
-void ParticleFilterWorkspace::initialize(const MetadataEntry &metadata) {
+void ParticleFilterWorkspace::initialize(const MetadataEntry &metadata, const ParticleFilterConfig &config) {
     std::cout << "Initializing...";
     std::cout.flush();
     direction = metadata.imuOrientation.toRPY().getZ();
@@ -23,13 +23,13 @@ void ParticleFilterWorkspace::initialize(const MetadataEntry &metadata) {
     pfm = std::make_shared<ParticleFastMatch>(
             svoCurPosition, // startLocation
             metadata.map.size(), // mapSize
-            500, // radius
-            .1f, // epsilon
-            200, // particleCount
-            .99, // quantile_
-            .5, // kld_error_
-            5, // bin_size_
-            true // use_gaussian
+            config.radius, // radius
+            config.epsilon, // epsilon
+            config.particleCount, // particleCount
+            config.quantile, // quantile_
+            config.kld_error, // kld_error_
+            config.binSize, // bin_size_
+            config.use_gaussian // use_gaussian
     );
     pfm->setDirection(direction);
     cv::Mat templ = metadata.getImageColored();

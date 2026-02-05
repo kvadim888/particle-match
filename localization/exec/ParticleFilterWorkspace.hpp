@@ -9,6 +9,8 @@
 #include <fastmatch-dataset/MetadataEntry.hpp>
 #include <GeographicLib/LocalCartesian.hpp>
 
+#include "core/ParticleFilterConfig.hpp"
+
 class ParticleFilterWorkspace {
 protected:
     bool affineMatching = false;
@@ -41,7 +43,7 @@ public:
 
     void setOutputDirectory(const string &outputDirectory);
 
-    void initialize(const MetadataEntry &metadata);
+    void initialize(const MetadataEntry &metadata, const ParticleFilterConfig &config);
 
     void update(const MetadataEntry &metadata);
 
@@ -63,5 +65,4 @@ public:
 
     Point getMovementFromSvo2(const MetadataEntry &metadata);
 };
-
 
