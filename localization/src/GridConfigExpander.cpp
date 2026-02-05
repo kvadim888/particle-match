@@ -2,7 +2,7 @@
 // Created by rokas on 17.6.19.
 //
 
-#include <tbb/parallel_for.h>
+#include "ParallelFor.hpp"
 #include "GridConfigExpander.hpp"
 
 /**
@@ -36,7 +36,7 @@ GridConfigExpander::createListOfConfigs(cv::Size templ_size, cv::Size image_size
     std::vector<fast_match::MatchConfig> configs(grid_size);
 
     /* Iterate thru each possible affine configuration steps */
-    tbb::parallel_for(0, ntx_steps, 1, [&](int tx_index) {
+    parallel::parallelFor(0, ntx_steps, [&](int tx_index) {
         float tx = tx_steps[tx_index];
 
         for (int ty_index = 0; ty_index < nty_steps; ty_index++) {
@@ -117,4 +117,3 @@ GridConfigExpander::randomExpandConfigs(std::vector<fast_match::MatchConfig> &co
 }
 
 GridConfigExpander::GridConfigExpander() : ConfigExpanderBase() {}
-

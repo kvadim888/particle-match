@@ -11,9 +11,7 @@
 #include <src/Particle.hpp>
 #include <src/ImageSample.hpp>
 #include <chrono>
-#ifdef USE_TBB
-#include <tbb/tbb.h>
-#endif
+#include <src/ParallelFor.hpp>
 
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
@@ -147,21 +145,12 @@ int main(int ac, char *av[]) {
         ImageSample cam_sample(camview, samplePoints);
         float mapAverage = cv::sum(map).val[0] / (float) (map.cols * map.rows);
         steady_clock::time_point begin = steady_clock::now();
-#ifdef USE_TBB
-        tbb::parallel_for_each(samplePoints.begin(), samplePoints.end(), [&] (const cv::Point2i& offset) {
+        parallel::parallelForEach(samplePoints.begin(), samplePoints.end(), [&] (const cv::Point2i& offset) {
             particle.x = ox + offset.x;
             particle.y = ox + offset.y;
             ImageSample mymapsample(map, samplePoints, particle.mapTransformation(), particle.toPoint(), mapAverage);
             falses.push_back(cam_sample.calcSimilarity(mymapsample));
         });
-#else
-        for (const auto& offset : samplePoints) {
-            particle.x = ox + offset.x;
-            particle.y = ox + offset.y;
-            ImageSample mymapsample(map, samplePoints, particle.mapTransformation(), particle.toPoint(), mapAverage);
-            falses.push_back(cam_sample.calcSimilarity(mymapsample));
-        }
-#endif
         steady_clock::time_point end = steady_clock::now();
         double dur = duration_cast<std::chrono::microseconds>(end - begin).count();
         std::cout << "Time took: " << dur / 1000000.0 << "[s]" << std::endl;

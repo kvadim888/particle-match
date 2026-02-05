@@ -11,7 +11,7 @@
 #include "Utilities.hpp"
 #include <iomanip>
 #include <random>
-#include <tbb/tbb.h>
+#include "ParallelFor.hpp"
 
 #include "GeometryUtils.hpp"
 
@@ -116,7 +116,7 @@ namespace fast_match {
         vector<double> distances(no_of_configs, 0.0);
 
         /* Calculate the score for each configurations on each of our randomly sampled points */
-        tbb::parallel_for(0, no_of_configs, 1, [&](int i) {
+        parallel::parallelFor(0, no_of_configs, [&](int i) {
 
             float a11 = affine_matrices[i].at<float>(0, 0),
                     a12 = affine_matrices[i].at<float>(0, 1),

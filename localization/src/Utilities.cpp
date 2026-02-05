@@ -12,7 +12,7 @@
 #include <random>
 #include <cmath>
 
-#include <tbb/parallel_for.h>
+#include "ParallelFor.hpp"
 
 #include "GeometryUtils.hpp"
 
@@ -257,7 +257,7 @@ std::vector<cv::Mat> Utilities::configsToAffine(
     insiders.assign(static_cast<size_t>(no_of_configs), false);
 
     /* Convert each configuration to corresponding affine transformation matrix */
-    tbb::parallel_for(0, no_of_configs, 1, [&](int i) {
+    parallel::parallelFor(0, no_of_configs, [&](int i) {
         Mat affine = configs[i].getAffineMatrix();
 
         /* Check if our affine transformed rectangle still fits within our boundary */
@@ -398,5 +398,4 @@ std::string Utilities::matType(int type) {
 
     return r;
 }
-
 

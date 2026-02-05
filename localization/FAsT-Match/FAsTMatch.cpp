@@ -9,7 +9,7 @@
 #include "FAsTMatch.h"
 #include <iomanip>
 #include <random>
-#include <tbb/tbb.h>
+#include "src/ParallelFor.hpp"
 
 
 #define WITHIN(val, top_left, bottom_right) (\
@@ -186,7 +186,7 @@ namespace fast_match {
         vector<MatchConfig> configs(grid_size);
 
         /* Iterate thru each possible affine configuration steps */
-        tbb::parallel_for(0, ntx_steps, 1, [&](int tx_index) {
+        parallel::parallelFor(0, ntx_steps, [&](int tx_index) {
             float tx = tx_steps[tx_index];
 
             for (int ty_index = 0; ty_index < nty_steps; ty_index++) {
@@ -299,7 +299,7 @@ namespace fast_match {
         insiders.assign(no_of_configs, false);
 
         /* Convert each configuration to corresponding affine transformation matrix */
-        tbb::parallel_for(0, no_of_configs, 1, [&](int i) {
+        parallel::parallelFor(0, no_of_configs, [&](int i) {
             Mat affine = configs[i].getAffineMatrix();
 
             /* Check if our affine transformed rectangle still fits within our boundary */
@@ -365,7 +365,7 @@ namespace fast_match {
         vector<double> distances(no_of_configs, 0.0);
 
         /* Calculate the score for each configurations on each of our randomly sampled points */
-        tbb::parallel_for(0, no_of_configs, 1, [&](int i) {
+        parallel::parallelFor(0, no_of_configs, [&](int i) {
 
             float a11 = affine_matrices[i].at<float>(0, 0),
                     a12 = affine_matrices[i].at<float>(0, 1),

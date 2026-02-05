@@ -10,6 +10,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_definitions(-fext-numeric-literals)
 
 option(USE_OPENCV_CUDA "Enable this flag to compile features requiring GPU support" OFF)
+option(USE_TBB "Enable Intel oneTBB backend for parallel loops" ON)
+option(USE_STD_EXECUTION "Enable std::execution parallel algorithms backend" OFF)
 
 if(${USE_OPENCV_CUDA})
     add_definitions(-DUSE_CV_GPU=1)
@@ -75,7 +77,21 @@ add_library(datasetreader SHARED
 target_link_libraries(datasetreader ${OpenCV_LIBS} ${Boost_LIBRARIES} ${GeographicLib_LIBRARY} ${GDAL_LIBRARY})
 
 add_library(fastmatch SHARED ${SOURCES})
-target_link_libraries(fastmatch ${OpenCV_LIBS} ${Boost_LIBRARIES} tbb)
+
+if(USE_TBB AND USE_STD_EXECUTION)
+    message(FATAL_ERROR "USE_TBB and USE_STD_EXECUTION are mutually exclusive. Please enable only one backend.")
+endif()
+
+if(USE_TBB)
+    find_package(TBB REQUIRED)
+    target_compile_definitions(fastmatch PRIVATE USE_TBB=1)
+    target_link_libraries(fastmatch ${OpenCV_LIBS} ${Boost_LIBRARIES} TBB::tbb)
+elseif(USE_STD_EXECUTION)
+    target_compile_definitions(fastmatch PRIVATE USE_STD_EXECUTION=1)
+    target_link_libraries(fastmatch ${OpenCV_LIBS} ${Boost_LIBRARIES})
+else()
+    target_link_libraries(fastmatch ${OpenCV_LIBS} ${Boost_LIBRARIES})
+endif()
 
 #add_executable(map-masker FAsT-Match/exec/map-masker.cpp FAsT-Match/exec/xml-parser.h
 #                            FAsT-Match/exec/PascalVocWriter.cpp)
@@ -93,12 +109,20 @@ target_link_libraries(dataset-match fastmatch ${Boost_LIBRARIES} datasetreader)
 
 add_executable(image-sampler localization/exec/test-image-sampling.cpp localization/src/ImageSample.cpp)
 target_link_libraries(image-sampler fastmatch ${Boost_LIBRARIES} datasetreader)
-target_compile_options(image-sampler PRIVATE -DUSE_TBB=1)
+if(USE_TBB)
+    target_compile_definitions(image-sampler PRIVATE USE_TBB=1)
+elseif(USE_STD_EXECUTION)
+    target_compile_definitions(image-sampler PRIVATE USE_STD_EXECUTION=1)
+endif()
 
 #add_executable(test-slopes FAsT-Match/exec/test-slopes.cpp)
 #target_link_libraries(test-slopes ${Boost_LIBRARIES})
 
-SET(fastmatch_LIBRARIES AirvisionSensorComm fastmatch ${OpenCV_LIBS} tbb)
+if(USE_TBB)
+    SET(fastmatch_LIBRARIES AirvisionSensorComm fastmatch ${OpenCV_LIBS} TBB::tbb)
+else()
+    SET(fastmatch_LIBRARIES AirvisionSensorComm fastmatch ${OpenCV_LIBS})
+endif()
 SET(fastmatch_LIBRARY_DIR ${PROJECT_BINARY_DIR} )
 SET(fastmatch_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/localization")
 CONFIGURE_FILE( ${CMAKE_CURRENT_SOURCE_DIR}/fastmatchConfig.cmake.in

@@ -11,9 +11,7 @@
 
 #include <opencv2/features2d.hpp>
 
-#include <tbb/task_scheduler_observer.h>
-#include <tbb/parallel_for_each.h>
-#include <tbb/parallel_for.h>
+#include "ParallelFor.hpp"
 
 #include "GeometryUtils.hpp"
 
@@ -102,7 +100,7 @@ vector<Point> ParticleFastMatch::filterParticlesAffine(const cv::Point2f &moveme
             }
         }
     } while (newParticles.size() < samplingCount);
-    tbb::parallel_for(0, static_cast<int>(newParticles.size()), 1, [&] (int ip) {
+    parallel::parallelFor(0, static_cast<int>(newParticles.size()), [&] (int ip) {
         double probability;
         cv::Mat transform = evaluateParticle(newParticles[ip], ip, probability);
         if(probability < bestProbability) {
@@ -162,7 +160,7 @@ ParticleFastMatch::evaluateConfigs(Mat &templ, vector<AffineTransformation> &aff
     vector<double> distances(static_cast<unsigned long>(no_of_configs), 0.0);
 
     /* Calculate the score for each configurations on each of our randomly sampled points */
-    tbb::parallel_for(0, no_of_configs, 1, [&](int i) {
+    parallel::parallelFor(0, no_of_configs, [&](int i) {
 
         float a11 = affine_matrices[i].T.at<float>(0, 0),
                 a12 = affine_matrices[i].T.at<float>(0, 1),
@@ -385,7 +383,7 @@ std::vector<cv::Point> ParticleFastMatch::filterParticles(const cv::Point2f &mov
         }
     } while (particleIndex < samplingCount);
 
-    tbb::parallel_for_each(newParticles.begin(), newParticles.end(), [&] (Particle& particle) {
+    parallel::parallelForEach(newParticles.begin(), newParticles.end(), [&] (Particle& particle) {
         cv::Mat rot_mat = particle.mapTransformation();
         ImageSample mapSample(imageGray, samplingPoints, rot_mat, particle.toPoint());
         auto ccoef = static_cast<float>(templateSample.calcSimilarity(mapSample));
