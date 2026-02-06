@@ -11,18 +11,29 @@
 
 namespace fs = boost::filesystem;
 
+namespace {
+constexpr int kViewportMarginX = 1000;
+constexpr int kViewportMarginY = 1000;
+constexpr int kViewportWidth = 3000;
+constexpr int kViewportHeight = 2000;
+constexpr int kPreviewWidth = 1200;
+constexpr int kPreviewHeight = 800;
+constexpr int kGtMarkerRadius = 50;
+constexpr int kGtMarkerThickness = 3;
+} // namespace
+
 bool PreviewRenderer::render(const RenderContext &ctx, std::stringstream &stringOutput) {
     cv::Point2i prediction = ctx.pfm->getPredictedLocation();
     cv::Point2i relativeLocation = prediction - ctx.startLocation;
     cv::Point2i offset = cv::Point2i(
-            -(prediction.x - 1000),
-            -(prediction.y - 1000)
+            -(prediction.x - kViewportMarginX),
+            -(prediction.y - kViewportMarginY)
     );
     cv::Mat mapDisplay = ctx.metadata.map(cv::Rect(
-            prediction.x - 1000,
-            prediction.y - 1000,
-            3000,
-            2000
+            prediction.x - kViewportMarginX,
+            prediction.y - kViewportMarginY,
+            kViewportWidth,
+            kViewportHeight
     )).clone();
     ctx.pfm->visualizeParticles(mapDisplay, offset);
     if(!ctx.corners.empty()) {
@@ -40,8 +51,8 @@ bool PreviewRenderer::render(const RenderContext &ctx, std::stringstream &string
         cv::Point2i center((newCorners[0].x + newCorners[2].x) / 2, (newCorners[0].y + newCorners[2].y) / 2);
         cv::arrowedLine(mapDisplay, center, arrowhead, CV_RGB(255, 0, 0), 20);
     }
-    visualizeGT(ctx.metadata.mapLocation + offset, ctx.direction, mapDisplay, 50, 3, CV_RGB(255, 255, 0));
-    visualizeGT(prediction + offset, ctx.direction, mapDisplay, 50, 3, CV_RGB(255, 255, 255));
+    visualizeGT(ctx.metadata.mapLocation + offset, ctx.direction, mapDisplay, kGtMarkerRadius, kGtMarkerThickness, CV_RGB(255, 255, 0));
+    visualizeGT(prediction + offset, ctx.direction, mapDisplay, kGtMarkerRadius, kGtMarkerThickness, CV_RGB(255, 255, 255));
     cv::Rect planeViewROI = cv::Rect(
             (mapDisplay.cols - 1) - ctx.planeView.cols,
             0,
@@ -114,7 +125,7 @@ bool PreviewRenderer::render(const RenderContext &ctx, std::stringstream &string
     if(displayImage_) {
         ensureWindow();
         cv::Mat preview;
-        cv::resize(mapDisplay, preview, cv::Size(1200, 800));
+        cv::resize(mapDisplay, preview, cv::Size(kPreviewWidth, kPreviewHeight));
         cv::imshow("Map", preview);
         int key = cv::waitKey(10);
         return key != 27;
