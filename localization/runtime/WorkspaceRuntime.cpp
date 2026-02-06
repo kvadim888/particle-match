@@ -1,11 +1,9 @@
 #include "WorkspaceRuntime.hpp"
 
 bool WorkspaceRuntime::preview(const MetadataEntry &metadata, const cv::Mat &image, std::stringstream &stringOutput) {
-    return renderer_.render(
+    RenderContext ctx{
             metadata,
             image,
-            stringOutput,
-            metadata.map,
             startLocation_,
             svoCurPosition_,
             direction_,
@@ -13,7 +11,8 @@ bool WorkspaceRuntime::preview(const MetadataEntry &metadata, const cv::Mat &ima
             bestTransform_,
             bestView_,
             core_.getFilter()
-    );
+    };
+    return renderer_.render(ctx, stringOutput);
 }
 
 bool WorkspaceRuntime::isDisplayImage() const {
