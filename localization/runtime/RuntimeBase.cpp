@@ -3,6 +3,7 @@
 #include <iostream>
 
 void RuntimeBase::initialize(const MetadataEntry &metadata, const ParticleFilterConfig &config) {
+    config.validate();
     std::cout << "Initializing...";
     std::cout.flush();
     direction_ = metadata.imuOrientation.toRPY().getZ();
