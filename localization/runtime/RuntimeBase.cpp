@@ -29,7 +29,9 @@ void RuntimeBase::initialize(const MetadataEntry &metadata, const ParticleFilter
 }
 
 void RuntimeBase::update(const MetadataEntry &metadata) {
-    cv::Point movement = motionModel_.getMovementFromSvo(metadata, svoCoordinates_, direction_, svoCurPosition_);
+    auto svoResult = motionModel_.getMovementFromSvo(metadata, svoCoordinates_, direction_, svoCurPosition_);
+    svoCurPosition_ = svoResult.updatedPosition;
+    cv::Point movement = svoResult.movement;
     cv::Mat templ = metadata.getImageColored();
     currentScale_ = scaleModel_.updateScale(
             1.0f,
