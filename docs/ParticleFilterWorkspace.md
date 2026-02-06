@@ -1,96 +1,132 @@
-# ParticleFilterWorkspace
+# Runtime Architecture
 
-**Файли:** `localization/exec/ParticleFilterWorkspace.hpp`, `localization/exec/ParticleFilterWorkspace.cpp`
+**Файли:**
+- `localization/runtime/RuntimeBase.hpp`, `RuntimeBase.cpp` -- спільна логіка
+- `localization/runtime/WorkspaceRuntime.hpp`, `WorkspaceRuntime.cpp` -- GUI режим
+- `localization/exec/dataset-test.cpp` -- HeadlessRuntime (headless режим)
 
 ## Призначення
 
-Менеджер життєвого циклу фільтру частинок. Організовує ініціалізацію, оновлення, візуалізацію та збір результатів. Є посередником між основною програмою (`dataset-test.cpp`) та алгоритмом (`ParticleFastMatch`).
+Менеджери життєвого циклу фільтру частинок. Організовують ініціалізацію, оновлення та збір результатів. Є посередниками між основною програмою (`dataset-test.cpp`) та алгоритмом (`ParticleFastMatch`).
 
-## Поля
+## Ієрархія класів
+
+```
+RuntimeBase (abstract)
+├── WorkspaceRuntime   -- GUI візуалізація через PreviewRenderer
+└── HeadlessRuntime    -- headless режим, тільки CSV вивід
+```
+
+## RuntimeBase
+
+Базовий клас, що містить спільну логіку для обох режимів:
+
+### Поля
 
 | Поле | Тип | Опис |
 |------|-----|------|
-| `pfm` | `shared_ptr<ParticleFastMatch>` | Екземпляр алгоритму |
-| `svoCurPosition` | `cv::Point` | Поточна позиція SVO (візуальна одометрія) |
-| `direction` | `double` | Поточний напрямок БПЛА (з IMU) |
-| `startLocation` | `cv::Point` | Початкова позиція |
-| `map` | `cv::Mat` | Зображення карти |
-| `corners` | `vector<Point>` | Кути найкращого шаблону |
-| `bestTransform` | `cv::Mat` | Найкраще афінне перетворення |
-| `currentScale` | `float` | Поточний масштаб |
-| `bestView` | `cv::Mat` | Зображення з найкращої частинки |
-| `writeImageToDisk` | `bool` | Чи зберігати кадри на диск |
-| `displayImage` | `bool` | Чи показувати вікно попереднього перегляду |
-| `outputDirectory` | `string` | Директорія для збереження зображень |
-| `svoCoordinates` | `shared_ptr<LocalCartesian>` | Локальна декартова система координат |
-| `affineMatching` | `bool` | Чи використовувати GPU-афінний пошук |
+| `core_` | `ParticleFilterCore` | Обгортка алгоритму ParticleFastMatch |
+| `svoCurPosition_` | `cv::Point` | Поточна позиція SVO (візуальна одометрія) |
+| `direction_` | `double` | Поточний напрямок БПЛА (з IMU) |
+| `startLocation_` | `cv::Point` | Початкова позиція |
+| `corners_` | `vector<Point>` | Кути найкращого шаблону |
+| `bestTransform_` | `cv::Mat` | Найкраще афінне перетворення |
+| `bestView_` | `cv::Mat` | Зображення з найкращої частинки |
+| `currentScale_` | `float` | Поточний масштаб |
+| `svoCoordinates_` | `shared_ptr<LocalCartesian>` | Локальна декартова система координат |
+| `motionModel_` | `MotionModelSvo` | Модель руху (SVO одометрія) |
+| `scaleModel_` | `ScaleModel` | Модель масштабу (висота -> масштаб) |
+| `affineMatching_` | `bool` | Чи використовувати GPU-афінний пошук |
 
-## Ключові методи
+### Методи
 
-### initialize
+#### initialize
 ```cpp
-void initialize(const MetadataEntry &metadata);
+void initialize(const MetadataEntry &metadata, const ParticleFilterConfig &config);
 ```
 Ініціалізація фільтра:
-1. Зчитує напрямок з IMU кватерніона (`toRPY().getZ()`)
-2. Створює локальну систему координат (GeographicLib::LocalCartesian) з GPS
-3. Створює `ParticleFastMatch` з параметрами:
-   - Початкова позиція на карті
-   - Радіус розсіювання: 500 пікселів
-   - epsilon: 0.1 (~1000 точок семплювання)
-   - 200 початкових частинок
-   - KLD: quantile=0.99, error=0.5, binSize=5
-   - Гаусівський розподіл
-4. Встановлює шаблон та зображення карти
-5. Обчислює масштаб за висотою та FOV
+1. **Валідація** конфігурації через `config.validate()`
+2. Зчитує напрямок з IMU кватерніона (`toRPY().getZ()`)
+3. Створює локальну систему координат (GeographicLib::LocalCartesian) з GPS
+4. Створює `ParticleFastMatch` через `ParticleFilterCore::initialize`
+5. Обчислює масштаб за висотою та FOV (з реальної ширини шаблону)
 
-### update
+#### update
 ```cpp
 void update(const MetadataEntry &metadata);
 ```
 Оновлення для кожного кадру:
-1. Обчислює вектор руху з SVO через `getMovementFromSvo`
+1. Обчислює вектор руху з SVO через `MotionModelSvo::getMovementFromSvo`
 2. Оновлює масштаб за поточною висотою
 3. Оновлює напрямок з IMU
 4. Встановлює новий шаблон (аеро-зображення)
 5. Запускає `filterParticles` (або `filterParticlesAffine` на GPU)
 
-### preview
+### Чисто віртуальні методи
 ```cpp
-bool preview(const MetadataEntry &metadata, cv::Mat image, std::stringstream &stringOutput) const;
+virtual bool preview(...) = 0;
+virtual bool isDisplayImage() const = 0;
+virtual void setDisplayImage(bool) = 0;
+virtual void setWriteImageToDisk(bool) = 0;
+virtual void setOutputDirectory(const std::string&) = 0;
 ```
-Візуалізація та збір статистики:
-1. Отримує зважену оцінку позиції
-2. Вирізає ROI карти 3000x2000 навколо оцінки
-3. Малює частинки на карті
-4. Малює контур найкращого шаблону (червоний прямокутник)
-5. Малює ground truth (жовтий маркер) та оцінку (білий маркер)
-6. Показує вид з камери та найкращу частинку
-7. Обчислює та записує помилку позиції
-8. Опціонально зберігає на диск / показує у вікні
-9. Повертає `false` при натисканні ESC
 
-### getMovementFromSvo
+## WorkspaceRuntime
+
+GUI-режим з `PreviewRenderer`:
+
 ```cpp
-cv::Point getMovementFromSvo(const MetadataEntry &metadata);
+bool preview(const MetadataEntry &metadata, const cv::Mat &image, std::stringstream &stringOutput) override;
 ```
-Обчислює вектор руху з візуальної одометрії:
-1. Конвертує SVO-позицію в GPS через `LocalCartesian::Reverse`
-2. Конвертує GPS в пікселі карти
-3. Обчислює зсув відносно попередньої позиції
-4. **Важливо**: використовує відстань з одометрії, але **напрямок з компаса** (IMU більш надійний)
+Створює `RenderContext` і делегує відображення в `PreviewRenderer::render()`.
 
-### updateScale
+## HeadlessRuntime
+
+Headless-режим без GUI залежностей:
+
 ```cpp
-void updateScale(float hfov, float altitude, uint32_t imageWidth);
+bool preview(const MetadataEntry &metadata, const cv::Mat &image, std::stringstream &stringOutput) override;
 ```
-Обчислює масштаб: `scale = tan(hfov/2) * altitude / (imageWidth/2)`. Встановлює діапазон масштабу [0.9*scale, 1.1*scale].
+Обчислює відстань до ground truth та записує результати через `ResultWriter::appendRow()`. Попереджає один раз якщо `--write-images` передано в headless режимі.
 
-## Виведення даних
+## Допоміжні класи
 
-CSV формат виводу:
-```
-Iteration, ImageName, ParticleCount, PosX, PosY, Distance, SVODistance
-```
-- `Distance` -- евклідова відстань між оцінкою та ground truth
-- `SVODistance` -- евклідова відстань між SVO та ground truth
+### ParticleFilterCore
+**Файли:** `localization/core/ParticleFilterCore.hpp`, `ParticleFilterCore.cpp`
+
+Обгортка `ParticleFastMatch`, що спрощує ініціалізацію з `ParticleFilterConfig`.
+
+### ParticleFilterConfig
+**Файл:** `localization/core/ParticleFilterConfig.hpp`
+
+Структура конфігурації з методом `validate()`:
+
+| Поле | Тип | За замовчуванням | Валідація |
+|------|-----|------------------|-----------|
+| `radius` | `double` | 500.0 | > 0 |
+| `epsilon` | `float` | 0.1 | (0, 1) |
+| `particleCount` | `int` | 200 | > 0 |
+| `quantile` | `float` | 0.99 | (0, 1] |
+| `kld_error` | `float` | 0.5 | > 0 |
+| `binSize` | `int` | 5 | > 0 |
+| `use_gaussian` | `bool` | true | -- |
+
+### MotionModelSvo
+**Файли:** `localization/models/MotionModelSvo.hpp`, `MotionModelSvo.cpp`
+
+Обчислює вектор руху з візуальної одометрії (SVO). Повертає `SvoMovementResult{movement, updatedPosition}` замість мутації out-параметра.
+
+### ScaleModel
+**Файли:** `localization/models/ScaleModel.hpp`, `ScaleModel.cpp`
+
+Обчислює масштаб: `scale = tan(hfov/2) * altitude / (imageWidth/2)`. Встановлює діапазон `[kScaleMarginLow * scale, kScaleMarginHigh * scale]` (за замовчуванням 0.9-1.1).
+
+### PreviewRenderer
+**Файли:** `localization/io/PreviewRenderer.hpp`, `PreviewRenderer.cpp`
+
+GUI рендеринг візуалізації. Приймає `RenderContext` та `stringstream` для виводу. Малює частинки, ground truth, оцінку позиції, найкращий шаблон.
+
+### ResultWriter
+**Файли:** `localization/io/ResultWriter.hpp`, `ResultWriter.cpp`
+
+Статичний клас для запису CSV результатів (заголовки та рядки даних).
