@@ -173,7 +173,7 @@ int main(int ac, char *av[]) {
             ("quantile", po::value<float>()->default_value(0.99f), "Particle filter quantile")
             ("kld-error", po::value<float>()->default_value(0.5f), "Particle filter KLD error")
             ("bin-size", po::value<int>()->default_value(5), "Particle filter bin size")
-            ("use-gaussian", po::value<bool>()->default_value(true), "Use gaussian sampling")
+            ("no-gaussian", po::bool_switch()->default_value(false), "Use uniform instead of gaussian sampling")
             ("help,h", "produce help message");
 
     po::variables_map vm;
@@ -199,7 +199,7 @@ int main(int ac, char *av[]) {
     config.quantile = vm["quantile"].as<float>();
     config.kld_error = vm["kld-error"].as<float>();
     config.binSize = vm["bin-size"].as<int>();
-    config.use_gaussian = vm["use-gaussian"].as<bool>();
+    config.use_gaussian = !vm["no-gaussian"].as<bool>();
 
     bool displayPreview = vm.count("preview") > 0;
     bool noGui = vm.count("no-gui") > 0;
