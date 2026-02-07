@@ -25,16 +25,19 @@ constexpr int kGtMarkerThickness = 3;
 bool PreviewRenderer::render(const RenderContext &ctx, std::stringstream &stringOutput) {
     cv::Point2i prediction = ctx.pfm->getPredictedLocation();
     cv::Point2i relativeLocation = prediction - ctx.startLocation;
-    cv::Point2i offset = cv::Point2i(
-            -(prediction.x - kViewportMarginX),
-            -(prediction.y - kViewportMarginY)
-    );
-    cv::Mat mapDisplay = ctx.metadata.map(cv::Rect(
-            prediction.x - kViewportMarginX,
-            prediction.y - kViewportMarginY,
-            kViewportWidth,
-            kViewportHeight
-    )).clone();
+
+    // Clamp viewport rectangle to map boundaries
+    int vpX = std::max(0, prediction.x - kViewportMarginX);
+    int vpY = std::max(0, prediction.y - kViewportMarginY);
+    int vpW = std::min(kViewportWidth, ctx.metadata.map.cols - vpX);
+    int vpH = std::min(kViewportHeight, ctx.metadata.map.rows - vpY);
+    if(vpW <= 0 || vpH <= 0) {
+        // Prediction is outside map bounds, skip rendering
+        return true;
+    }
+
+    cv::Point2i offset = cv::Point2i(-vpX, -vpY);
+    cv::Mat mapDisplay = ctx.metadata.map(cv::Rect(vpX, vpY, vpW, vpH)).clone();
     ctx.pfm->visualizeParticles(mapDisplay, offset);
     if(!ctx.corners.empty()) {
         std::vector<cv::Point> newCorners = {
