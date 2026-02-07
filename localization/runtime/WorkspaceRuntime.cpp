@@ -10,7 +10,7 @@ bool WorkspaceRuntime::preview(const MetadataEntry &metadata, const cv::Mat &ima
             corners_,
             bestTransform_,
             bestView_,
-            core_.getFilter()
+            core_->getFilter()
     };
     return renderer_.render(ctx, stringOutput);
 }

@@ -14,6 +14,9 @@
 
 class RuntimeBase : public IRuntime {
 public:
+    RuntimeBase() : core_(std::make_unique<ParticleFilterCore>()) {}
+    explicit RuntimeBase(std::unique_ptr<ParticleFilterCore> core) : core_(std::move(core)) {}
+
     void initialize(const MetadataEntry &metadata, const ParticleFilterConfig &config) override;
 
     void update(const MetadataEntry &metadata) override;
@@ -32,7 +35,7 @@ public:
 
 protected:
     bool affineMatching_ = false;
-    ParticleFilterCore core_;
+    std::unique_ptr<ParticleFilterCore> core_;
     cv::Point svoCurPosition_;
     double direction_ = 0.0;
     cv::Point startLocation_;

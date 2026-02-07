@@ -28,7 +28,7 @@ public:
             warnedWriteImages_ = true;
             std::cerr << "Headless mode ignores --write-images because GUI preview rendering is disabled.\n";
         }
-        cv::Point2i prediction = core_.getFilter()->getPredictedLocation();
+        cv::Point2i prediction = core_->getFilter()->getPredictedLocation();
         cv::Point2i relativeLocation = prediction - startLocation_;
         double distance = std::sqrt(std::pow(metadata.mapLocation.x - prediction.x, 2) +
                                     std::pow(metadata.mapLocation.y - prediction.y, 2));
@@ -36,7 +36,7 @@ public:
                                        std::pow(metadata.mapLocation.y - svoCurPosition_.y, 2));
         ResultWriter::appendRow(
                 stringOutput,
-                core_.getFilter()->particleCount(),
+                core_->getFilter()->particleCount(),
                 relativeLocation,
                 distance,
                 svoDistance
