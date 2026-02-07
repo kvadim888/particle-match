@@ -108,7 +108,7 @@ particle-match/
 
 - **Header Guards**: Use `#pragma once`
 - **Includes**: Standard library first, then third-party, then local headers
-- **Namespaces**: Use `cv::` for OpenCV, `fs::` for boost::filesystem, `po::` for boost::program_options
+- **Namespaces**: Use `cv::` for OpenCV, `fs::` for std::filesystem, `po::` for boost::program_options
 - **Class Organization**: Public members first, then protected, then private
 - **Comments**: Brief creation comments with author and date at file tops
 
@@ -125,7 +125,7 @@ particle-match/
 - **OpenCV Mat**: Used extensively for images and matrices
 - **Smart Pointers**: `std::shared_ptr` for shared ownership
 - **Boost Program Options**: CLI argument parsing
-- **Boost Filesystem**: Cross-platform file operations
+- **std::filesystem**: Cross-platform file operations
 
 ## Algorithm Overview
 

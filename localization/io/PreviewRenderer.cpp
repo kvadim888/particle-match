@@ -1,15 +1,14 @@
 #include "PreviewRenderer.hpp"
 
 #include <cmath>
+#include <filesystem>
 #include <iostream>
-
-#include <boost/filesystem/path.hpp>
 
 #include <src/Utilities.hpp>
 
 #include "ResultWriter.hpp"
 
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace {
 constexpr int kViewportMarginX = 1000;

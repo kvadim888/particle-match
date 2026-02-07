@@ -4,7 +4,7 @@
 
 #include <cmath>
 #include <boost/program_options.hpp>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include <iostream>
 #include <fastmatch-dataset/MetadataEntryReader.hpp>
 #include <opencv2/imgproc.hpp>
@@ -16,7 +16,7 @@
 #endif
 
 namespace po = boost::program_options;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 using namespace std::chrono;
 
 Particle locationAsParticle(const MetadataEntry &entry) {

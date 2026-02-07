@@ -4,12 +4,12 @@
 
 #pragma once
 
-#include <boost/filesystem.hpp>
+#include <filesystem>
 
 #include <boost/property_tree/ptree.hpp>
 #include <opencv2/core/types.hpp>
 
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 namespace pt = boost::property_tree;
 
 class PascalVocWriter {
@@ -26,4 +26,3 @@ public:
     void write() const;
 
 };
-

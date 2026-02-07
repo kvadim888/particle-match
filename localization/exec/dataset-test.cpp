@@ -1,6 +1,6 @@
 
 #include <boost/program_options.hpp>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include <cmath>
 #include <ctime>
 #include <iostream>
@@ -17,7 +17,7 @@
 #include "runtime/RuntimeBase.hpp"
 #include "io/ResultWriter.hpp"
 
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 namespace po = boost::program_options;
 
 namespace {
