@@ -8,8 +8,8 @@ https://zenodo.org/record/1211730
 
 # Dependencies
 
-* OpenCV 3.3+
-* libboost
+* OpenCV 4.0+
+* Boost 1.70+ (system, program_options, filesystem, thread)
 * GeographicLib
 * Eigen3
 * libgdal

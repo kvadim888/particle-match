@@ -7,7 +7,6 @@
 #include <boost/tokenizer.hpp>
 #include <opencv2/core/mat.hpp>
 #include <opencv2/imgcodecs.hpp>
-#include <opencv/cv.hpp>
 #include "fastmatch-dataset/MetadataEntryReader.hpp"
 
 namespace po = boost::program_options;

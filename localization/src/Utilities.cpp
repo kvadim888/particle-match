@@ -132,7 +132,7 @@ cv::cuda::GpuMat Utilities::extractWarpedMapPart(
     T.at<float>(1, 2) = corners[0].y - roi.y;
     cv::cuda::GpuMat mapPart = map(roi);
     cv::cuda::GpuMat destination(templ_size, CV_8UC1);
-    cv::cuda::warpAffine(mapPart, destination, T, templ_size, CV_INTER_NN | CV_WARP_INVERSE_MAP);
+    cv::cuda::warpAffine(mapPart, destination, T, templ_size, cv::INTER_NEAREST | cv::WARP_INVERSE_MAP);
     return destination;
 }
 #endif
@@ -165,7 +165,7 @@ float Utilities::calculateCorrCoeff(cv::Mat scene, cv::Mat templ) {
 float Utilities::calculateCorrCoeff(cv::cuda::GpuMat scene, cv::cuda::GpuMat templ) {
     cv::cuda::GpuMat result(cv::Size(1, 1), CV_32FC1);
     cv::Mat resultL(cv::Size(1, 1), CV_32FC1);
-    cv::Ptr<cv::cuda::TemplateMatching> match = cv::cuda::createTemplateMatching(CV_8UC1, CV_TM_CCOEFF_NORMED);
+    cv::Ptr<cv::cuda::TemplateMatching> match = cv::cuda::createTemplateMatching(CV_8UC1, cv::TM_CCOEFF_NORMED);
     match->match(scene, templ, result);
     result.download(resultL);
     return resultL.at<float>(0, 0);
@@ -398,5 +398,4 @@ std::string Utilities::matType(int type) {
 
     return r;
 }
-
 

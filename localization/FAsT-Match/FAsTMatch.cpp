@@ -498,7 +498,7 @@ namespace fast_match {
     Mat FAsTMatch::preprocessImage(Mat &image) {
         Mat temp = image.clone();
         if (temp.channels() != 1)
-            cvtColor(temp, temp, CV_BGR2GRAY);
+            cvtColor(temp, temp, cv::COLOR_BGR2GRAY);
 
         if (temp.type() != CV_32FC1)
             temp.convertTo(temp, CV_32FC1, 1.0 / 255.0);

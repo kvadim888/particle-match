@@ -17,8 +17,8 @@ endif()
 
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-FIND_PACKAGE( Boost 1.40 COMPONENTS system program_options thread REQUIRED )
-find_package( OpenCV REQUIRED )
+find_package( Boost 1.70 COMPONENTS system program_options filesystem thread REQUIRED )
+find_package( OpenCV 4 REQUIRED )
 
 # Look for the library and headers manually
 find_library(GeographicLib_LIBRARY
@@ -35,6 +35,7 @@ find_path(GeographicLib_INCLUDE_DIR
 find_package( Eigen3 REQUIRED )
 find_package(GDAL REQUIRED)
 find_package(CURL REQUIRED)
+find_package(TBB REQUIRED)
 include_directories(${CURL_INCLUDE_DIR})
 
 include_directories(${OpenCV_INCLUDE_DIRS})
@@ -75,7 +76,7 @@ add_library(datasetreader SHARED
 target_link_libraries(datasetreader ${OpenCV_LIBS} ${Boost_LIBRARIES} ${GeographicLib_LIBRARY} ${GDAL_LIBRARY})
 
 add_library(fastmatch SHARED ${SOURCES})
-target_link_libraries(fastmatch ${OpenCV_LIBS} ${Boost_LIBRARIES} tbb)
+target_link_libraries(fastmatch ${OpenCV_LIBS} ${Boost_LIBRARIES} TBB::tbb)
 
 #add_executable(map-masker FAsT-Match/exec/map-masker.cpp FAsT-Match/exec/xml-parser.h
 #                            FAsT-Match/exec/PascalVocWriter.cpp)
@@ -127,7 +128,7 @@ target_include_directories(test-particles PRIVATE localization)
 target_link_libraries(test-particles fastmatch ${OpenCV_LIBS})
 add_test(NAME Particles COMMAND test-particles)
 
-SET(fastmatch_LIBRARIES AirvisionSensorComm fastmatch ${OpenCV_LIBS} tbb)
+SET(fastmatch_LIBRARIES AirvisionSensorComm fastmatch ${OpenCV_LIBS} TBB::tbb)
 SET(fastmatch_LIBRARY_DIR ${PROJECT_BINARY_DIR} )
 SET(fastmatch_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/localization")
 CONFIGURE_FILE( ${CMAKE_CURRENT_SOURCE_DIR}/fastmatchConfig.cmake.in

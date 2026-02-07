@@ -17,8 +17,8 @@ This document provides guidance for AI assistants working with the particle-matc
 - CMake 3.12+
 - C++14 compiler (GCC recommended)
 - Required libraries:
-  - OpenCV 3.3+ (computer vision)
-  - Boost 1.40+ (system, program_options, filesystem, thread)
+  - OpenCV 4.0+ (computer vision)
+  - Boost 1.70+ (system, program_options, filesystem, thread)
   - Eigen3 (linear algebra)
   - GeographicLib (GPS coordinate conversions)
   - GDAL (GeoTIFF support)
@@ -251,7 +251,7 @@ sudo apt-get install libgeographic-dev
 
 ### OpenCV Version Issues
 
-Project updated for OpenCV 3.x compatibility. If encountering API issues, check OpenCV version matches 3.3+.
+Project updated for OpenCV 4.x compatibility. If encountering API issues, check OpenCV version matches 4.0+.
 
 ### GCC Include Errors
 
