@@ -117,6 +117,16 @@ add_executable(test-scale-model tests/test_scale_model.cpp localization/models/S
 target_include_directories(test-scale-model PRIVATE localization)
 add_test(NAME ScaleModel COMMAND test-scale-model)
 
+add_executable(test-particle-config tests/test_particle_config.cpp)
+target_include_directories(test-particle-config PRIVATE localization)
+target_link_libraries(test-particle-config ${OpenCV_LIBS})
+add_test(NAME ParticleConfig COMMAND test-particle-config)
+
+add_executable(test-particles tests/test_particles.cpp)
+target_include_directories(test-particles PRIVATE localization)
+target_link_libraries(test-particles fastmatch ${OpenCV_LIBS})
+add_test(NAME Particles COMMAND test-particles)
+
 SET(fastmatch_LIBRARIES AirvisionSensorComm fastmatch ${OpenCV_LIBS} tbb)
 SET(fastmatch_LIBRARY_DIR ${PROJECT_BINARY_DIR} )
 SET(fastmatch_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/localization")
