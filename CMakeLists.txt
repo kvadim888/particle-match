@@ -88,6 +88,7 @@ add_executable(dataset-match
         localization/models/ScaleModel.cpp
         localization/io/PreviewRenderer.cpp
         localization/io/ResultWriter.cpp
+        localization/runtime/RuntimeBase.cpp
         localization/runtime/WorkspaceRuntime.cpp
         localization/exec/dataset-test.cpp)
 target_link_libraries(dataset-match fastmatch ${Boost_LIBRARIES} datasetreader)
@@ -98,6 +99,33 @@ target_compile_options(image-sampler PRIVATE -DUSE_TBB=1)
 
 #add_executable(test-slopes FAsT-Match/exec/test-slopes.cpp)
 #target_link_libraries(test-slopes ${Boost_LIBRARIES})
+
+# Unit tests
+enable_testing()
+include_directories(tests)
+
+add_executable(test-config tests/test_config.cpp)
+target_include_directories(test-config PRIVATE localization)
+add_test(NAME ParticleFilterConfig COMMAND test-config)
+
+add_executable(test-result-writer tests/test_result_writer.cpp localization/io/ResultWriter.cpp)
+target_include_directories(test-result-writer PRIVATE localization)
+target_link_libraries(test-result-writer ${OpenCV_LIBS})
+add_test(NAME ResultWriter COMMAND test-result-writer)
+
+add_executable(test-scale-model tests/test_scale_model.cpp localization/models/ScaleModel.cpp)
+target_include_directories(test-scale-model PRIVATE localization)
+add_test(NAME ScaleModel COMMAND test-scale-model)
+
+add_executable(test-particle-config tests/test_particle_config.cpp)
+target_include_directories(test-particle-config PRIVATE localization)
+target_link_libraries(test-particle-config ${OpenCV_LIBS})
+add_test(NAME ParticleConfig COMMAND test-particle-config)
+
+add_executable(test-particles tests/test_particles.cpp)
+target_include_directories(test-particles PRIVATE localization)
+target_link_libraries(test-particles fastmatch ${OpenCV_LIBS})
+add_test(NAME Particles COMMAND test-particles)
 
 SET(fastmatch_LIBRARIES AirvisionSensorComm fastmatch ${OpenCV_LIBS} tbb)
 SET(fastmatch_LIBRARY_DIR ${PROJECT_BINARY_DIR} )

@@ -1,58 +1,20 @@
 #pragma once
 
-#include <memory>
-#include <vector>
-
-#include <GeographicLib/LocalCartesian.hpp>
-#include <fastmatch-dataset/MetadataEntry.hpp>
-
-#include "core/ParticleFilterConfig.hpp"
-#include "core/ParticleFilterCore.hpp"
+#include "RuntimeBase.hpp"
 #include "io/PreviewRenderer.hpp"
-#include "models/MotionModelSvo.hpp"
-#include "models/ScaleModel.hpp"
 
-class WorkspaceRuntime {
+class WorkspaceRuntime : public RuntimeBase {
 public:
-    void initialize(const MetadataEntry &metadata, const ParticleFilterConfig &config);
+    bool preview(const MetadataEntry &metadata, const cv::Mat &image, std::stringstream &stringOutput) override;
 
-    void update(const MetadataEntry &metadata);
+    bool isDisplayImage() const override;
 
-    bool preview(const MetadataEntry &metadata, const cv::Mat &image, std::stringstream &stringOutput);
+    void setDisplayImage(bool displayImage) override;
 
-    bool isAffineMatching() const;
+    void setWriteImageToDisk(bool writeImageToDisk) override;
 
-    void setAffineMatching(bool affineMatching);
-
-    bool isDisplayImage() const;
-
-    void setDisplayImage(bool displayImage);
-
-    void setWriteImageToDisk(bool writeImageToDisk);
-
-    void setOutputDirectory(const std::string &outputDirectory);
-
-    void setCorrelationLowBound(float bound);
-
-    void setConversionMethod(ParticleFastMatch::ConversionMode method);
-
-    void describe() const;
-
-    const Particles &getParticles() const;
+    void setOutputDirectory(const std::string &outputDirectory) override;
 
 private:
-    bool affineMatching = false;
-    ParticleFilterCore core;
-    PreviewRenderer renderer;
-    cv::Point svoCurPosition;
-    double direction = 0.0;
-    cv::Point startLocation;
-    cv::Mat map;
-    std::vector<cv::Point> corners;
-    cv::Mat bestTransform;
-    cv::Mat bestView;
-    float currentScale = 0.0f;
-    std::shared_ptr<GeographicLib::LocalCartesian> svoCoordinates;
-    MotionModelSvo motionModel;
-    ScaleModel scaleModel;
+    PreviewRenderer renderer_;
 };

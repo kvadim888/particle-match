@@ -12,7 +12,7 @@
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    ParticleFilterWorkspace                           │
+│                    RuntimeBase                           │
 │              (оркестрація, візуалізація, результати)                 │
 ├─────────────────────┬───────────────────────────────────────────────┤
 │                     │                                               │
@@ -56,7 +56,7 @@ graph LR
 
 ```mermaid
 graph TD
-    Entry[MetadataEntry] --> PFW[ParticleFilterWorkspace]
+    Entry[MetadataEntry] --> PFW[RuntimeBase]
     PFW --> |"GPS → пікселі"| StartLoc[Початкова позиція]
     PFW --> |"IMU → yaw"| Direction[Напрямок]
     PFW --> |"altitude → scale"| Scale[Масштаб]
@@ -66,7 +66,7 @@ graph TD
     PFM --> |"розсіювання"| Particles[200 частинок у колі R=500px]
 ```
 
-`ParticleFilterWorkspace::initialize` створює `ParticleFastMatch` з початковою GPS-позицією, конвертованою в піксельні координати через `GeotiffMap::toPixels`. 200 частинок розподіляються в гаусівському колі радіусом 500 пікселів.
+`RuntimeBase::initialize` створює `ParticleFastMatch` з початковою GPS-позицією, конвертованою в піксельні координати через `GeotiffMap::toPixels`. 200 частинок розподіляються в гаусівському колі радіусом 500 пікселів.
 
 ### 3. Цикл оновлення (кожний наступний кадр)
 
@@ -155,34 +155,46 @@ dataset-test.cpp
     │   └── GeotiffMap (→ Map)
     │       └── GeographicLib::GeoCoords
     │
-    └── ParticleFilterWorkspace
-        ├── ParticleFastMatch (→ FAsTMatch)
-        │   ├── Particles (→ vector<Particle>)
-        │   │   └── Particle
-        │   │       └── MatchConfig (FAsT-Match)
-        │   ├── ImageSample
-        │   ├── Utilities (static)
-        │   ├── AffineTransformation
-        │   ├── ConfigExpanderBase
-        │   │   └── GridConfigExpander
-        │   ├── ConfigVisualizer
-        │   └── MatchNet (FAsT-Match)
+    └── RuntimeBase (abstract)
+        ├── WorkspaceRuntime (GUI)
+        │   └── PreviewRenderer (RenderContext)
+        ├── HeadlessRuntime (CSV only)
+        ├── ParticleFilterCore
+        │   └── ParticleFastMatch (→ FAsTMatch)
+        │       ├── Particles (composition over vector<Particle>)
+        │       │   └── Particle (shared_ptr<ParticleConfig>)
+        │       │       └── MatchConfig (FAsT-Match)
+        │       ├── ImageSample
+        │       ├── Utilities (static)
+        │       ├── AffineTransformation
+        │       ├── ConfigExpanderBase
+        │       │   └── GridConfigExpander
+        │       ├── ConfigVisualizer
+        │       └── MatchNet (FAsT-Match)
+        ├── MotionModelSvo (→ SvoMovementResult)
+        ├── ScaleModel
+        ├── ResultWriter (static)
         └── GeographicLib::LocalCartesian
 ```
 
 ### Потік володіння (ownership)
 
 ```
-ParticleFilterWorkspace
+RuntimeBase
     │
-    ├── shared_ptr<ParticleFastMatch> pfm
+    ├── ParticleFilterCore core_
     │   │
-    │   └── Particles particles (value, contains vector<Particle>)
+    │   └── shared_ptr<ParticleFastMatch> pfm
     │       │
-    │       └── shared_ptr<vector<float>> s_initial (спільний масштаб)
-    │           (кожна Particle тримає копію shared_ptr)
+    │       └── Particles particles (value, contains vector<Particle>)
+    │           │
+    │           ├── shared_ptr<ParticleConfig> particleConfig (спільна конфігурація)
+    │           └── shared_ptr<vector<float>> s_initial (спільний масштаб)
+    │               (кожна Particle тримає копію shared_ptr)
     │
-    └── shared_ptr<LocalCartesian> svoCoordinates
+    ├── MotionModelSvo motionModel_ (value)
+    ├── ScaleModel scaleModel_ (value)
+    └── shared_ptr<LocalCartesian> svoCoordinates_
 
 MetadataEntryReader
     │
@@ -206,17 +218,17 @@ MetadataEntryReader
 ## Конфігурація алгоритму
 
 ```
-Параметри ініціалізації (жорстко задані в ParticleFilterWorkspace::initialize):
+Параметри з CLI (ParticleFilterConfig, валідуються при ініціалізації):
     startLocation  = GPS → пікселі
-    radius         = 500 px
-    epsilon        = 0.1         → no_of_points = 10/(0.1²) = 1000
-    particleCount  = 200
-    quantile       = 0.99        → zvalue з ztable
-    kld_error      = 0.5
-    binSize        = 5 px
-    use_gaussian   = true
+    radius         = 500 px (--particle-radius)
+    epsilon        = 0.1    (--epsilon)    → no_of_points = 10/(0.1²) = 1000
+    particleCount  = 200    (--particle-count)
+    quantile       = 0.99   (--quantile)   → zvalue з ztable
+    kld_error      = 0.5    (--kld-error)
+    binSize        = 5 px   (--bin-size)
+    use_gaussian   = true   (--use-gaussian)
 
-Параметри з CLI:
+Інші параметри з CLI:
     correlation-bound  → lowBound (поріг активації)
     conversion-method  → HPRELU / GLF / Softmax
     skip-rate          → пропуск кадрів (за замовчуванням 10)

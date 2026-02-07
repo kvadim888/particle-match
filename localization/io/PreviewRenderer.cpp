@@ -11,36 +11,40 @@
 
 namespace fs = boost::filesystem;
 
-bool PreviewRenderer::render(const MetadataEntry &metadata,
-                             const cv::Mat &planeView,
-                             std::stringstream &stringOutput,
-                             const cv::Mat &map,
-                             const cv::Point &startLocation,
-                             const cv::Point &svoCurPosition,
-                             double direction,
-                             const std::vector<cv::Point> &corners,
-                             const cv::Mat &bestTransform,
-                             const cv::Mat &bestView,
-                             const std::shared_ptr<ParticleFastMatch> &pfm) {
-    cv::Point2i prediction = pfm->getPredictedLocation();
-    cv::Point2i relativeLocation = prediction - startLocation;
-    cv::Point2i offset = cv::Point2i(
-            -(prediction.x - 1000),
-            -(prediction.y - 1000)
-    );
-    cv::Mat mapDisplay = map(cv::Rect(
-            prediction.x - 1000,
-            prediction.y - 1000,
-            3000,
-            2000
-    )).clone();
-    pfm->visualizeParticles(mapDisplay, offset);
-    if(!corners.empty()) {
+namespace {
+constexpr int kViewportMarginX = 1000;
+constexpr int kViewportMarginY = 1000;
+constexpr int kViewportWidth = 3000;
+constexpr int kViewportHeight = 2000;
+constexpr int kPreviewWidth = 1200;
+constexpr int kPreviewHeight = 800;
+constexpr int kGtMarkerRadius = 50;
+constexpr int kGtMarkerThickness = 3;
+} // namespace
+
+bool PreviewRenderer::render(const RenderContext &ctx, std::stringstream &stringOutput) {
+    cv::Point2i prediction = ctx.pfm->getPredictedLocation();
+    cv::Point2i relativeLocation = prediction - ctx.startLocation;
+
+    // Clamp viewport rectangle to map boundaries
+    int vpX = std::max(0, prediction.x - kViewportMarginX);
+    int vpY = std::max(0, prediction.y - kViewportMarginY);
+    int vpW = std::min(kViewportWidth, ctx.metadata.map.cols - vpX);
+    int vpH = std::min(kViewportHeight, ctx.metadata.map.rows - vpY);
+    if(vpW <= 0 || vpH <= 0) {
+        // Prediction is outside map bounds, skip rendering
+        return true;
+    }
+
+    cv::Point2i offset = cv::Point2i(-vpX, -vpY);
+    cv::Mat mapDisplay = ctx.metadata.map(cv::Rect(vpX, vpY, vpW, vpH)).clone();
+    ctx.pfm->visualizeParticles(mapDisplay, offset);
+    if(!ctx.corners.empty()) {
         std::vector<cv::Point> newCorners = {
-                corners[0] + offset,
-                corners[1] + offset,
-                corners[2] + offset,
-                corners[3] + offset
+                ctx.corners[0] + offset,
+                ctx.corners[1] + offset,
+                ctx.corners[2] + offset,
+                ctx.corners[3] + offset
         };
         cv::line(mapDisplay, newCorners[0], newCorners[1], cv::Scalar(0, 0, 255), 4);
         cv::line(mapDisplay, newCorners[1], newCorners[2], cv::Scalar(0, 0, 255), 4);
@@ -50,15 +54,15 @@ bool PreviewRenderer::render(const MetadataEntry &metadata,
         cv::Point2i center((newCorners[0].x + newCorners[2].x) / 2, (newCorners[0].y + newCorners[2].y) / 2);
         cv::arrowedLine(mapDisplay, center, arrowhead, CV_RGB(255, 0, 0), 20);
     }
-    visualizeGT(metadata.mapLocation + offset, direction, mapDisplay, 50, 3, CV_RGB(255, 255, 0));
-    visualizeGT(prediction + offset, direction, mapDisplay, 50, 3, CV_RGB(255, 255, 255));
+    visualizeGT(ctx.metadata.mapLocation + offset, ctx.direction, mapDisplay, kGtMarkerRadius, kGtMarkerThickness, CV_RGB(255, 255, 0));
+    visualizeGT(prediction + offset, ctx.direction, mapDisplay, kGtMarkerRadius, kGtMarkerThickness, CV_RGB(255, 255, 255));
     cv::Rect planeViewROI = cv::Rect(
-            (mapDisplay.cols - 1) - planeView.cols,
+            (mapDisplay.cols - 1) - ctx.planeView.cols,
             0,
-            planeView.cols,
-            planeView.rows
+            ctx.planeView.cols,
+            ctx.planeView.rows
     );
-    planeView.copyTo(mapDisplay(planeViewROI));
+    ctx.planeView.copyTo(mapDisplay(planeViewROI));
     cv::rectangle(mapDisplay, planeViewROI, cv::Scalar(0, 0, 255));
 
     int fontFace = cv::FONT_HERSHEY_COMPLEX_SMALL;
@@ -70,12 +74,12 @@ bool PreviewRenderer::render(const MetadataEntry &metadata,
                 fontFace, fontScale, Scalar::all(255), thickness, 8);
 
 
-    if(!bestTransform.empty()) {
-        std::cout << bestTransform << "\n";
-        cv::Mat best = Utilities::extractWarpedMapPart(metadata.map, metadata.getImage().size(), bestTransform);
+    if(!ctx.bestTransform.empty()) {
+        std::cout << ctx.bestTransform << "\n";
+        cv::Mat best = Utilities::extractWarpedMapPart(ctx.metadata.map, ctx.metadata.getImage().size(), ctx.bestTransform);
         auto bestParticleROI = cv::Rect(
                 (mapDisplay.cols - 1) - best.cols,
-                planeView.rows,
+                ctx.planeView.rows,
                 best.cols,
                 best.rows
         );
@@ -85,46 +89,46 @@ bool PreviewRenderer::render(const MetadataEntry &metadata,
                     cv::Point(bestParticleROI.x + 10, bestParticleROI.y + textOffset),
                     fontFace, fontScale, Scalar::all(255), thickness, 8);
     }
-    if(!bestView.empty()) {
+    if(!ctx.bestView.empty()) {
         auto bestParticleROI = cv::Rect(
-                (mapDisplay.cols - 1) - bestView.cols,
-                planeView.rows,
-                bestView.cols,
-                bestView.rows
+                (mapDisplay.cols - 1) - ctx.bestView.cols,
+                ctx.planeView.rows,
+                ctx.bestView.cols,
+                ctx.bestView.rows
         );
-        if (bestView.channels() == 1) {
-            cv::cvtColor(bestView, mapDisplay(bestParticleROI), cv::COLOR_GRAY2BGR);
-        } else if (bestView.channels() == 3) {
-            bestView.copyTo(mapDisplay(bestParticleROI));
+        if (ctx.bestView.channels() == 1) {
+            cv::cvtColor(ctx.bestView, mapDisplay(bestParticleROI), cv::COLOR_GRAY2BGR);
+        } else if (ctx.bestView.channels() == 3) {
+            ctx.bestView.copyTo(mapDisplay(bestParticleROI));
         }
         cv::rectangle(mapDisplay, bestParticleROI, cv::Scalar(0, 0, 255));
-        cv::putText(mapDisplay, "Best particle " + std::to_string(pfm->getParticles().back().getCorrelation()),
+        cv::putText(mapDisplay, "Best particle " + std::to_string(ctx.pfm->getParticles().back().getCorrelation()),
                     cv::Point(bestParticleROI.x + 10, bestParticleROI.y + textOffset),
                     fontFace, fontScale, Scalar::all(255), thickness, 8);
     }
-    double distance = sqrt(pow(metadata.mapLocation.x - prediction.x, 2) + pow(metadata.mapLocation.y - prediction.y, 2));
-    double svoDistance = sqrt(pow(metadata.mapLocation.x - svoCurPosition.x, 2) +
-                                      pow(metadata.mapLocation.y - svoCurPosition.y, 2));
+    double distance = sqrt(pow(ctx.metadata.mapLocation.x - prediction.x, 2) + pow(ctx.metadata.mapLocation.y - prediction.y, 2));
+    double svoDistance = sqrt(pow(ctx.metadata.mapLocation.x - ctx.svoCurPosition.x, 2) +
+                                      pow(ctx.metadata.mapLocation.y - ctx.svoCurPosition.y, 2));
     ResultWriter::appendRow(
             stringOutput,
-            pfm->particleCount(),
+            ctx.pfm->particleCount(),
             relativeLocation,
             distance,
             svoDistance
     );
     cv::putText(mapDisplay, "Location error = " + std::to_string(distance) + " m",
                 cv::Point(10, textOffset), fontFace, fontScale, Scalar::all(255), thickness, 8);
-    if(writeImageToDisk) {
+    if(writeImageToDisk_) {
         char integers[6];
-        std::snprintf(integers, 6, "%05d", imageCounter++);
+        std::snprintf(integers, 6, "%05d", imageCounter_++);
         std::string filename = "preview_" + std::string(integers) + ".jpg";
-        fs::path p(outputDirectory);
+        fs::path p(outputDirectory_);
         cv::imwrite((p / filename).string(), mapDisplay);
     }
-    if(displayImage) {
+    if(displayImage_) {
         ensureWindow();
         cv::Mat preview;
-        cv::resize(mapDisplay, preview, cv::Size(1200, 800));
+        cv::resize(mapDisplay, preview, cv::Size(kPreviewWidth, kPreviewHeight));
         cv::imshow("Map", preview);
         int key = cv::waitKey(10);
         return key != 27;
@@ -133,19 +137,19 @@ bool PreviewRenderer::render(const MetadataEntry &metadata,
 }
 
 bool PreviewRenderer::isDisplayImage() const {
-    return displayImage;
+    return displayImage_;
 }
 
 void PreviewRenderer::setDisplayImage(bool displayImage) {
-    PreviewRenderer::displayImage = displayImage;
+    displayImage_ = displayImage;
 }
 
 void PreviewRenderer::setWriteImageToDisk(bool writeImageToDisk) {
-    PreviewRenderer::writeImageToDisk = writeImageToDisk;
+    writeImageToDisk_ = writeImageToDisk;
 }
 
 void PreviewRenderer::setOutputDirectory(const std::string &outputDirectory) {
-    PreviewRenderer::outputDirectory = outputDirectory;
+    outputDirectory_ = outputDirectory;
 }
 
 void PreviewRenderer::visualizeGT(const cv::Point &loc, double yaw, cv::Mat &image, int radius, int thickness,
@@ -164,10 +168,10 @@ void PreviewRenderer::visualizeGT(const cv::Point &loc, double yaw, cv::Mat &ima
 }
 
 void PreviewRenderer::ensureWindow() {
-    if(windowInitialized) {
+    if(windowInitialized_) {
         return;
     }
     cv::namedWindow("Map", cv::WINDOW_NORMAL);
     cv::waitKey(10);
-    windowInitialized = true;
+    windowInitialized_ = true;
 }

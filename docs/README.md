@@ -35,12 +35,12 @@
 | [GeotiffMap.md](GeotiffMap.md) | `Map`, `GeotiffMap` | Карта з конвертацією GPS <-> пікселі через GeoTIFF/UTM |
 | [Vector3d_Quaternion.md](Vector3d_Quaternion.md) | `Vector3d`, `Quaternion` | 3D вектор позиції та кватерніон орієнтації |
 
-### Виконувані програми (`localization/exec/`)
+### Runtime та виконувані програми
 
-| Документ | Файл | Опис |
-|----------|------|------|
+| Документ | Файл/Клас | Опис |
+|----------|-----------|------|
 | [DatasetTest.md](DatasetTest.md) | `dataset-test.cpp` | Головна програма: CLI, запуск фільтра, формат результатів |
-| [ParticleFilterWorkspace.md](ParticleFilterWorkspace.md) | `ParticleFilterWorkspace` | Менеджер життєвого циклу фільтра частинок |
+| [ParticleFilterWorkspace.md](ParticleFilterWorkspace.md) | `RuntimeBase`, `WorkspaceRuntime`, `HeadlessRuntime` | Архітектура runtime: ієрархія класів, моделі руху/масштабу, конфігурація |
 
 ### Зовнішні залежності
 

@@ -9,19 +9,21 @@
 #include <opencv2/opencv.hpp>
 #include <src/ParticleFastMatch.hpp>
 
+struct RenderContext {
+    const MetadataEntry &metadata;
+    const cv::Mat &planeView;
+    const cv::Point &startLocation;
+    const cv::Point &svoCurPosition;
+    double direction;
+    const std::vector<cv::Point> &corners;
+    const cv::Mat &bestTransform;
+    const cv::Mat &bestView;
+    const std::shared_ptr<ParticleFastMatch> &pfm;
+};
+
 class PreviewRenderer {
 public:
-    bool render(const MetadataEntry &metadata,
-                const cv::Mat &planeView,
-                std::stringstream &stringOutput,
-                const cv::Mat &map,
-                const cv::Point &startLocation,
-                const cv::Point &svoCurPosition,
-                double direction,
-                const std::vector<cv::Point> &corners,
-                const cv::Mat &bestTransform,
-                const cv::Mat &bestView,
-                const std::shared_ptr<ParticleFastMatch> &pfm);
+    bool render(const RenderContext &ctx, std::stringstream &stringOutput);
 
     bool isDisplayImage() const;
 
@@ -37,9 +39,9 @@ private:
 
     void ensureWindow();
 
-    bool writeImageToDisk = false;
-    bool displayImage = true;
-    std::string outputDirectory;
-    bool windowInitialized = false;
-    int imageCounter = 0;
+    bool writeImageToDisk_ = false;
+    bool displayImage_ = true;
+    std::string outputDirectory_;
+    bool windowInitialized_ = false;
+    int imageCounter_ = 0;
 };

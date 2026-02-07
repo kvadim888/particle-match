@@ -13,82 +13,30 @@
 #if defined(HAVE_OPENCV_HIGHGUI)
 #include "runtime/WorkspaceRuntime.hpp"
 #endif
-#include "core/ParticleFilterConfig.hpp"
-#include "core/ParticleFilterCore.hpp"
+#include "runtime/IRuntime.hpp"
+#include "runtime/RuntimeBase.hpp"
 #include "io/ResultWriter.hpp"
-#include "models/MotionModelSvo.hpp"
-#include "models/ScaleModel.hpp"
 
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
 namespace {
-class HeadlessRuntime {
+class HeadlessRuntime : public RuntimeBase {
 public:
-    void initialize(const MetadataEntry &metadata, const ParticleFilterConfig &config) {
-        std::cout << "Initializing...";
-        std::cout.flush();
-        direction = metadata.imuOrientation.toRPY().getZ();
-        svoCurPosition = metadata.mapLocation;
-        svoCoordinates = std::make_shared<GeographicLib::LocalCartesian>(
-                metadata.latitude,
-                metadata.longitude,
-                metadata.altitude
-        );
-        core.initialize(metadata, config);
-        core.setDirection(direction);
-        cv::Mat templ = metadata.getImageColored();
-        currentScale = scaleModel.updateScale(
-                1.0f,
-                static_cast<float>(metadata.altitude),
-                templ.cols,
-                [this](float minScale, float maxScale) {
-                    core.setScale(minScale, maxScale);
-                }
-        );
-        startLocation = core.getFilter()->getPredictedLocation();
-        std::cout << " done!" << std::endl;
-    }
-
-    void update(const MetadataEntry &metadata) {
-        cv::Point movement = motionModel.getMovementFromSvo(metadata, svoCoordinates, direction, svoCurPosition);
-        currentScale = scaleModel.updateScale(
-                1.0f,
-                static_cast<float>(metadata.altitude),
-                640,
-                [this](float minScale, float maxScale) {
-                    core.setScale(minScale, maxScale);
-                }
-        );
-        direction = metadata.imuOrientation.toRPY().getZ();
-        core.setDirection(direction);
-        cv::Mat templ = metadata.getImageColored();
-        core.setTemplate(templ);
-        if(!affineMatching) {
-            core.filterParticles(movement, bestTransform);
-        } else {
-#ifdef USE_CV_GPU
-            core.filterParticlesAffine(movement, bestTransform);
-#else
-            throw std::runtime_error("Affine particle matching is available with GPU support only");
-#endif
-        }
-    }
-
-    bool preview(const MetadataEntry &metadata, const cv::Mat & /*image*/, std::stringstream &stringOutput) {
-        if(writeImageToDisk && !warnedWriteImages) {
-            warnedWriteImages = true;
+    bool preview(const MetadataEntry &metadata, const cv::Mat & /*image*/, std::stringstream &stringOutput) override {
+        if(writeImageToDisk_ && !warnedWriteImages_) {
+            warnedWriteImages_ = true;
             std::cerr << "Headless mode ignores --write-images because GUI preview rendering is disabled.\n";
         }
-        cv::Point2i prediction = core.getFilter()->getPredictedLocation();
-        cv::Point2i relativeLocation = prediction - startLocation;
+        cv::Point2i prediction = core_->getFilter()->getPredictedLocation();
+        cv::Point2i relativeLocation = prediction - startLocation_;
         double distance = std::sqrt(std::pow(metadata.mapLocation.x - prediction.x, 2) +
                                     std::pow(metadata.mapLocation.y - prediction.y, 2));
-        double svoDistance = std::sqrt(std::pow(metadata.mapLocation.x - svoCurPosition.x, 2) +
-                                       std::pow(metadata.mapLocation.y - svoCurPosition.y, 2));
+        double svoDistance = std::sqrt(std::pow(metadata.mapLocation.x - svoCurPosition_.x, 2) +
+                                       std::pow(metadata.mapLocation.y - svoCurPosition_.y, 2));
         ResultWriter::appendRow(
                 stringOutput,
-                core.getFilter()->particleCount(),
+                core_->getFilter()->particleCount(),
                 relativeLocation,
                 distance,
                 svoDistance
@@ -96,62 +44,27 @@ public:
         return true;
     }
 
-    bool isAffineMatching() const {
-        return affineMatching;
-    }
-
-    void setAffineMatching(bool affineMatching) {
-        HeadlessRuntime::affineMatching = affineMatching;
-    }
-
-    bool isDisplayImage() const {
+    bool isDisplayImage() const override {
         return false;
     }
 
-    void setDisplayImage(bool /*displayImage*/) {}
+    void setDisplayImage(bool /*displayImage*/) override {}
 
-    void setWriteImageToDisk(bool writeImageToDisk) {
-        HeadlessRuntime::writeImageToDisk = writeImageToDisk;
+    void setWriteImageToDisk(bool writeImageToDisk) override {
+        writeImageToDisk_ = writeImageToDisk;
     }
 
-    void setOutputDirectory(const std::string &outputDirectory) {
-        HeadlessRuntime::outputDirectory = outputDirectory;
-    }
-
-    void setCorrelationLowBound(float bound) {
-        core.setLowBound(bound);
-    }
-
-    void setConversionMethod(ParticleFastMatch::ConversionMode method) {
-        core.setConversionMethod(method);
-    }
-
-    void describe() const {
-        core.describe();
-    }
-
-    const Particles &getParticles() const {
-        return core.getParticles();
+    void setOutputDirectory(const std::string &outputDirectory) override {
+        outputDirectory_ = outputDirectory;
     }
 
 private:
-    bool affineMatching = false;
-    ParticleFilterCore core;
-    cv::Point svoCurPosition;
-    double direction = 0.0;
-    cv::Point startLocation;
-    cv::Mat bestTransform;
-    float currentScale = 0.0f;
-    std::shared_ptr<GeographicLib::LocalCartesian> svoCoordinates;
-    MotionModelSvo motionModel;
-    ScaleModel scaleModel;
-    bool writeImageToDisk = false;
-    bool warnedWriteImages = false;
-    std::string outputDirectory;
+    bool writeImageToDisk_ = false;
+    bool warnedWriteImages_ = false;
+    std::string outputDirectory_;
 };
 
-template <typename Runtime>
-int runDataset(Runtime &pf,
+int runDataset(IRuntime &pf,
                MetadataEntryReader &reader,
                const po::variables_map &vm,
                const ParticleFilterConfig &config,
@@ -261,7 +174,7 @@ int main(int ac, char *av[]) {
             ("quantile", po::value<float>()->default_value(0.99f), "Particle filter quantile")
             ("kld-error", po::value<float>()->default_value(0.5f), "Particle filter KLD error")
             ("bin-size", po::value<int>()->default_value(5), "Particle filter bin size")
-            ("use-gaussian", po::value<bool>()->default_value(true), "Use gaussian sampling")
+            ("no-gaussian", po::bool_switch()->default_value(false), "Use uniform instead of gaussian sampling")
             ("help,h", "produce help message");
 
     po::variables_map vm;
@@ -287,7 +200,7 @@ int main(int ac, char *av[]) {
     config.quantile = vm["quantile"].as<float>();
     config.kld_error = vm["kld-error"].as<float>();
     config.binSize = vm["bin-size"].as<int>();
-    config.use_gaussian = vm["use-gaussian"].as<bool>();
+    config.use_gaussian = !vm["no-gaussian"].as<bool>();
 
     bool displayPreview = vm.count("preview") > 0;
     bool noGui = vm.count("no-gui") > 0;
@@ -320,15 +233,18 @@ int main(int ac, char *av[]) {
     // Declare path and sanity check
     bool writeHistograms = vm.count("write-histograms") > 0;
     bool writeImages = vm.count("write-images") > 0;
-    if(noGui) {
-        HeadlessRuntime pf;
+#if defined(HAVE_OPENCV_HIGHGUI)
+    if(!noGui) {
+        WorkspaceRuntime pf;
         return runDataset(pf, reader, vm, config, mapName, displayPreview, writeImages, writeHistograms);
     }
-#if defined(HAVE_OPENCV_HIGHGUI)
-    WorkspaceRuntime pf;
-    return runDataset(pf, reader, vm, config, mapName, displayPreview, writeImages, writeHistograms);
 #else
-    std::cerr << "GUI preview is not available in this build. Use --no-gui to run headless.\n";
-    return 1;
+    if(!noGui) {
+        std::cerr << "OpenCV HighGUI not available, falling back to headless mode.\n";
+    }
 #endif
+    {
+        HeadlessRuntime pf;
+        return runDataset(pf, reader, vm, config, mapName, false, writeImages, writeHistograms);
+    }
 }
