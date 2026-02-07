@@ -232,15 +232,18 @@ int main(int ac, char *av[]) {
     // Declare path and sanity check
     bool writeHistograms = vm.count("write-histograms") > 0;
     bool writeImages = vm.count("write-images") > 0;
-    if(noGui) {
-        HeadlessRuntime pf;
+#if defined(HAVE_OPENCV_HIGHGUI)
+    if(!noGui) {
+        WorkspaceRuntime pf;
         return runDataset(pf, reader, vm, config, mapName, displayPreview, writeImages, writeHistograms);
     }
-#if defined(HAVE_OPENCV_HIGHGUI)
-    WorkspaceRuntime pf;
-    return runDataset(pf, reader, vm, config, mapName, displayPreview, writeImages, writeHistograms);
 #else
-    std::cerr << "GUI preview is not available in this build. Use --no-gui to run headless.\n";
-    return 1;
+    if(!noGui) {
+        std::cerr << "OpenCV HighGUI not available, falling back to headless mode.\n";
+    }
 #endif
+    {
+        HeadlessRuntime pf;
+        return runDataset(pf, reader, vm, config, mapName, false, writeImages, writeHistograms);
+    }
 }
