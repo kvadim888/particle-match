@@ -1,7 +1,7 @@
 
 #include <boost/program_options.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/format.hpp>
+#include <filesystem>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <curl/curl.h>
@@ -12,7 +12,7 @@
 #include "PascalVocWriter.hpp"
 
 namespace po = boost::program_options;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 using boost::format;
 
 static const std::string osm_api_url = "https://api.openstreetmap.org/api/0.6/map?bbox=";

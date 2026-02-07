@@ -3,8 +3,7 @@
 //
 
 #include <chrono>
-#include <boost/filesystem.hpp>
-#include <boost/range/iterator_range.hpp>
+#include <filesystem>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/lexical_cast.hpp>
@@ -12,6 +11,7 @@
 #include "FastMatcherThread.hpp"
 
 using namespace std::chrono;
+namespace fs = std::filesystem;
 
 
 FastMatcherThread::FastMatcherThread() : matcher() {
@@ -24,9 +24,8 @@ void FastMatcherThread::setDirectionPrecision(double directionPrecision) {
 
 
 std::string gen_number(std::string directory, const int len = 5) {
-    using namespace boost::filesystem;
     int maxValue = 0;
-    for(auto& entry : boost::make_iterator_range(directory_iterator(directory), {})) {
+    for(const auto& entry : fs::directory_iterator(directory)) {
         std::vector<std::string> strs;
         boost::split(strs, entry.path().stem().string(), boost::is_any_of("-"));
         if(strs.size() > 1) {

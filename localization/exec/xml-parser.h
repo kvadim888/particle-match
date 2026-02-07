@@ -32,11 +32,11 @@
 
 #include <curl/curl.h>
 
+#include <filesystem>
 #include <iostream>
-#include <vector>
 #include <string>
+#include <vector>
 #include <boost/program_options.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/foreach.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -44,6 +44,8 @@
 
 #ifndef XML_H
 #define XML_H
+
+namespace fs = std::filesystem;
 
 typedef std::pair <float, float> ffPair; // lat-lon
 
@@ -181,8 +183,8 @@ public:
         ways.resize (0);
         nodes.clear ();
 
-        boost::filesystem::path p (_file);
-        if (boost::filesystem::exists (p))
+        fs::path p (_file);
+        if (fs::exists (p))
         {
             std::ifstream in_file;
             in_file.open (_file.c_str (), std::ifstream::in);

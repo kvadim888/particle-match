@@ -1,8 +1,8 @@
 
 #include <boost/program_options.hpp>
-#include <iostream>
-#include <boost/filesystem.hpp>
+#include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <boost/token_functions.hpp>
 #include <boost/tokenizer.hpp>
 #include <opencv2/core/mat.hpp>
@@ -10,7 +10,7 @@
 #include "fastmatch-dataset/MetadataEntryReader.hpp"
 
 namespace po = boost::program_options;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 
 int main(int ac, char *av[]) {
