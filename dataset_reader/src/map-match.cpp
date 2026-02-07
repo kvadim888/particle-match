@@ -34,14 +34,14 @@ int main(int ac, char *av[]) {
     cv::Mat map = mapper.getSatelliteImage();
     cv::imwrite("orthophoto.png", map);
     cv::Mat graymap;
-    cv::cvtColor(map, graymap, CV_BGR2GRAY);
+    cv::cvtColor(map, graymap, cv::COLOR_BGR2GRAY);
     fast_match::FAsTMatch fast_match;
     fast_match.init( 0.05f, 0.9f, true, 0.8f, 1.2f );
 
     double scaleFactor = 4;
     double scaleDownFactor = 1 / scaleFactor;
-    cv::resize(graymap, graymap, cv::Size(0, 0), scaleDownFactor, scaleDownFactor, CV_INTER_NN);
-    cv::resize(templ, templ, cv::Size(0, 0), scaleDownFactor, scaleDownFactor, CV_INTER_NN);
+    cv::resize(graymap, graymap, cv::Size(0, 0), scaleDownFactor, scaleDownFactor, cv::INTER_NEAREST);
+    cv::resize(templ, templ, cv::Size(0, 0), scaleDownFactor, scaleDownFactor, cv::INTER_NEAREST);
 
     double distance;
     std::cout << "Matching map size [" << graymap.cols << "," << graymap.rows << "] with template size ["

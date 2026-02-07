@@ -3,7 +3,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <iostream>
-#include <opencv/cv.hpp>
+#include <opencv2/opencv.hpp>
 #include <curl/curl.h>
 #include <iomanip>
 

@@ -17,8 +17,8 @@ endif()
 
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-FIND_PACKAGE( Boost 1.40 COMPONENTS system program_options filesystem thread REQUIRED )
-find_package( OpenCV REQUIRED )
+find_package( Boost 1.70 COMPONENTS system program_options filesystem thread REQUIRED )
+find_package( OpenCV 4 REQUIRED )
 
 # Look for the library and headers manually
 find_library(GeographicLib_LIBRARY
