@@ -11,6 +11,7 @@
 #include "FastMatcherThread.hpp"
 
 using namespace std::chrono;
+namespace fs = std::filesystem;
 
 
 FastMatcherThread::FastMatcherThread() : matcher() {
@@ -23,9 +24,8 @@ void FastMatcherThread::setDirectionPrecision(double directionPrecision) {
 
 
 std::string gen_number(std::string directory, const int len = 5) {
-    using namespace std::filesystem;
     int maxValue = 0;
-    for(const auto& entry : directory_iterator(directory)) {
+    for(const auto& entry : fs::directory_iterator(directory)) {
         std::vector<std::string> strs;
         boost::split(strs, entry.path().stem().string(), boost::is_any_of("-"));
         if(strs.size() > 1) {
