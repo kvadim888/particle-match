@@ -7,40 +7,28 @@
 #include <GeographicLib/LocalCartesian.hpp>
 #include <fastmatch-dataset/MetadataEntry.hpp>
 
-#include "core/ParticleFilterConfig.hpp"
+#include "IRuntime.hpp"
 #include "core/ParticleFilterCore.hpp"
 #include "models/MotionModelSvo.hpp"
 #include "models/ScaleModel.hpp"
 
-class RuntimeBase {
+class RuntimeBase : public IRuntime {
 public:
-    virtual ~RuntimeBase() = default;
+    void initialize(const MetadataEntry &metadata, const ParticleFilterConfig &config) override;
 
-    void initialize(const MetadataEntry &metadata, const ParticleFilterConfig &config);
+    void update(const MetadataEntry &metadata) override;
 
-    void update(const MetadataEntry &metadata);
+    bool isAffineMatching() const override;
 
-    virtual bool preview(const MetadataEntry &metadata, const cv::Mat &image, std::stringstream &stringOutput) = 0;
+    void setAffineMatching(bool affineMatching) override;
 
-    bool isAffineMatching() const;
+    void setCorrelationLowBound(float bound) override;
 
-    void setAffineMatching(bool affineMatching);
+    void setConversionMethod(ParticleFastMatch::ConversionMode method) override;
 
-    virtual bool isDisplayImage() const = 0;
+    void describe() const override;
 
-    virtual void setDisplayImage(bool displayImage) = 0;
-
-    virtual void setWriteImageToDisk(bool writeImageToDisk) = 0;
-
-    virtual void setOutputDirectory(const std::string &outputDirectory) = 0;
-
-    void setCorrelationLowBound(float bound);
-
-    void setConversionMethod(ParticleFastMatch::ConversionMode method);
-
-    void describe() const;
-
-    const Particles &getParticles() const;
+    const Particles &getParticles() const override;
 
 protected:
     bool affineMatching_ = false;

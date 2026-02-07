@@ -13,6 +13,7 @@
 #if defined(HAVE_OPENCV_HIGHGUI)
 #include "runtime/WorkspaceRuntime.hpp"
 #endif
+#include "runtime/IRuntime.hpp"
 #include "runtime/RuntimeBase.hpp"
 #include "io/ResultWriter.hpp"
 
@@ -63,7 +64,7 @@ private:
     std::string outputDirectory_;
 };
 
-int runDataset(RuntimeBase &pf,
+int runDataset(IRuntime &pf,
                MetadataEntryReader &reader,
                const po::variables_map &vm,
                const ParticleFilterConfig &config,
